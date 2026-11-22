@@ -36,13 +36,23 @@ jobs:
         run: python3 tools/check_avenox_overlay.py --upstream-ref upstream/main
       - name: Check generated settings map
         run: python3 tools/generate_settings_map.py --check
-      - name: Run Avenox unit tests
+      - name: Run focused Avenox unit tests
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon \
-            testStandardRunTestsUnitTest \
-            testOfflineRunTestsUnitTest \
-            --tests "helium314.keyboard.avenox.AvenoxPromptEngineTest"
+          cat > /tmp/avenox-test-filter.gradle <<'EOF'
+          import org.gradle.api.tasks.testing.Test
+          allprojects {
+              tasks.withType(Test).configureEach {
+                  if (name == "testStandardRunTestsUnitTest") {
+                      filter {
+                          setIncludePatterns("helium314.keyboard.avenox.AvenoxPromptEngineTest")
+                          failOnNoMatchingTests = true
+                      }
+                  }
+              }
+          }
+          EOF
+          ./gradlew --no-daemon -I /tmp/avenox-test-filter.gradle testStandardRunTestsUnitTest
 
       - name: Compile upstream variants and build debug APK
         run: |

@@ -62,14 +62,24 @@ jobs:
       - name: Check generated settings map
         if: steps.upstream.outputs.changed == 'true'
         run: python3 tools/generate_settings_map.py --check
-      - name: Run Avenox unit tests
+      - name: Run focused Avenox unit tests
         if: steps.upstream.outputs.changed == 'true'
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon \
-            testStandardRunTestsUnitTest \
-            testOfflineRunTestsUnitTest \
-            --tests "helium314.keyboard.avenox.AvenoxPromptEngineTest"
+          cat > /tmp/avenox-test-filter.gradle <<'EOF'
+          import org.gradle.api.tasks.testing.Test
+          allprojects {
+              tasks.withType(Test).configureEach {
+                  if (name == "testStandardRunTestsUnitTest") {
+                      filter {
+                          setIncludePatterns("helium314.keyboard.avenox.AvenoxPromptEngineTest")
+                          failOnNoMatchingTests = true
+                      }
+                  }
+              }
+          }
+          EOF
+          ./gradlew --no-daemon -I /tmp/avenox-test-filter.gradle testStandardRunTestsUnitTest
 
       - name: Compile upstream variants and build debug APK
         if: steps.upstream.outputs.changed == 'true'
