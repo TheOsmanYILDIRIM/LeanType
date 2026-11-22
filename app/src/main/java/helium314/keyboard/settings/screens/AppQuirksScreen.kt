@@ -46,6 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import helium314.keyboard.avenox.AvenoxPromptEngine // AVENOX-HOOK:app-profile-ui
 import helium314.keyboard.compat.AppQuirk
 import helium314.keyboard.compat.AppQuirksManager
 import helium314.keyboard.compat.BrowserDetector
@@ -71,6 +72,11 @@ private data class BadgeInfo(
 private data class ActionOption(
     val label: String,
     val action: Int?
+)
+
+private data class PromptPositionOption(
+    val label: String,
+    val value: String,
 )
 
 @Composable
@@ -271,6 +277,19 @@ fun AppQuirksScreen(
                         MaterialTheme.colorScheme.onSecondaryContainer
                     ))
                 }
+                if (effective?.avenoxPromptPosition == AvenoxPromptEngine.POSITION_PREFIX && effective.avenoxPrompt.isNotBlank()) {
+                    badges.add(BadgeInfo(
+                        stringResource(R.string.avenox_prompt_badge_prefix),
+                        MaterialTheme.colorScheme.primaryContainer,
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    ))
+                } else if (effective?.avenoxPromptPosition == AvenoxPromptEngine.POSITION_SUFFIX && effective.avenoxPrompt.isNotBlank()) {
+                    badges.add(BadgeInfo(
+                        stringResource(R.string.avenox_prompt_badge_suffix),
+                        MaterialTheme.colorScheme.primaryContainer,
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    ))
+                }
                 if (effective?.useSelectionForWordReplacement == true) {
                     badges.add(BadgeInfo(
                         stringResource(R.string.app_quirks_badge_selection_replacement),
@@ -430,6 +449,10 @@ private fun AppQuirkDialog(
     var alwaysShowSuggestions by remember { mutableStateOf(initialEffective.alwaysShowSuggestions) }
     var useSelectionForWordReplacement by remember { mutableStateOf(initialEffective.useSelectionForWordReplacement) }
     var hideToolbar by remember { mutableStateOf(initialEffective.hideToolbar) }
+    var avenoxPrompt by remember { mutableStateOf(initialEffective.avenoxPrompt) }
+    var avenoxPromptPosition by remember {
+        mutableStateOf(AvenoxPromptEngine.normalizePosition(initialEffective.avenoxPromptPosition))
+    }
     var selectedAction by remember { mutableStateOf(initialEffective.forceEnterAction) }
 
     val options = listOf(
@@ -450,6 +473,13 @@ private fun AppQuirkDialog(
     )
     val currentAutoCorrectionOption = autoCorrectionOptions.find { it.action == autoCorrectionMode } ?: autoCorrectionOptions.first()
 
+    val promptPositionOptions = listOf(
+        PromptPositionOption(stringResource(R.string.avenox_prompt_position_off), AvenoxPromptEngine.POSITION_OFF),
+        PromptPositionOption(stringResource(R.string.avenox_prompt_position_prefix), AvenoxPromptEngine.POSITION_PREFIX),
+        PromptPositionOption(stringResource(R.string.avenox_prompt_position_suffix), AvenoxPromptEngine.POSITION_SUFFIX),
+    )
+    val currentPromptPosition = promptPositionOptions.find { it.value == avenoxPromptPosition } ?: promptPositionOptions.first()
+
     ThreeButtonAlertDialog(
         onDismissRequest = onDismissRequest,
         onConfirmed = {
@@ -469,6 +499,8 @@ private fun AppQuirkDialog(
                 hideToolbar = hideToolbar,
                 alwaysShowSuggestions = alwaysShowSuggestions,
                 useSelectionForWordReplacement = useSelectionForWordReplacement,
+                avenoxPrompt = avenoxPrompt.trim(),
+                avenoxPromptPosition = AvenoxPromptEngine.normalizePosition(avenoxPromptPosition),
             )
             AppQuirksManager.saveQuirk(newQuirk)
             onSaved()
@@ -524,6 +556,34 @@ private fun AppQuirkDialog(
                     checked = hideToolbar,
                     onCheckedChange = { hideToolbar = it }
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.avenox_prompt_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = stringResource(R.string.avenox_prompt_summary),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                DropDownField(
+                    items = promptPositionOptions,
+                    selectedItem = currentPromptPosition,
+                    onSelected = { avenoxPromptPosition = it.value }
+                ) {
+                    Text(it.label)
+                }
+                if (avenoxPromptPosition != AvenoxPromptEngine.POSITION_OFF) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    androidx.compose.material3.OutlinedTextField(
+                        value = avenoxPrompt,
+                        onValueChange = { avenoxPrompt = it },
+                        label = { Text(stringResource(R.string.avenox_prompt_template)) },
+                        minLines = 3,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                 QuirkToggleRow(
                     title = stringResource(R.string.app_quirks_use_selection_replacement),
                     summary = stringResource(R.string.app_quirks_use_selection_replacement_summary),

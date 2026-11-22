@@ -1737,4 +1737,27 @@ Metin düzeltme ve yeniden yazma için cihaz üzerinde GGUF / llama.cpp çıkar�
     <string name="language_pack_download_failed">İndirme başarısız oldu. Bu uygulama sürümü için henüz çeviri yok.</string>
     <string name="language_pack_wrong_build">Bu çeviri dosyası farklı bir uygulama sürümü için hazırlanmış.</string>
     <string name="language_pack_invalid">Bu dosya bir çeviri dosyası değil.</string>
+
+    <!-- AVENOX-HOOK:prompt-strings-tr -->
+    <string name="avenox_prompt_title">Prompt enjeksiyonu</string>
+    <string name="avenox_prompt_summary">Bu uygulama mesajı gönderirken hazır promptu otomatik ekler. Yazarken metin alanı temiz kalır.</string>
+    <string name="avenox_prompt_template">Prompt şablonu</string>
+    <string name="avenox_prompt_position_off">Kapalı</string>
+    <string name="avenox_prompt_position_prefix">Mesajın başına</string>
+    <string name="avenox_prompt_position_suffix">Mesajın sonuna</string>
+    <string name="avenox_prompt_badge_prefix">Prompt: başta</string>
+    <string name="avenox_prompt_badge_suffix">Prompt: sonda</string>
+    <string name="avenox_mode_enabled">Prompt modu: %1$s</string>
+    <string name="avenox_mode_disabled">Prompt modu kapatıldı</string>
+    <string name="custom_ai_keyword_insert_label">Ekle</string>
+    <string name="custom_ai_keyword_insert_desc">Bu tuşun metnini AI servisi çağırmadan doğrudan metin alanına ekler.</string>
+    <string name="custom_ai_keyword_localsend_label">Ekle + gönder</string>
+    <string name="custom_ai_keyword_localsend_desc">Bu tuşun metnini yerel olarak ekler ve uygulamanın gönder eylemini çalıştırır. Aktif uygulama promptu da uygulanır.</string>
+    <string name="custom_ai_keyword_modeprefix_label">Mod: başa</string>
+    <string name="custom_ai_keyword_modeprefix_desc">Bu tuşun metnini mevcut uygulamada mesajların başına otomatik prompt yapar.</string>
+    <string name="custom_ai_keyword_modesuffix_label">Mod: sona</string>
+    <string name="custom_ai_keyword_modesuffix_desc">Bu tuşun metnini mevcut uygulamada mesajların sonuna otomatik prompt yapar.</string>
+    <string name="custom_ai_keyword_modeoff_label">Mod: kapalı</string>
+    <string name="custom_ai_keyword_modeoff_desc">Kayıtlı şablonu silmeden mevcut uygulamada otomatik prompt enjeksiyonunu kapatır.</string>
+
 </resources>

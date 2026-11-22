@@ -1,0 +1,56 @@
+name: Avenox CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: avenox-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          java-version: "17"
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Fetch LeanType upstream
+        run: |
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream https://github.com/LeanBitLab/LeanType.git
+          git fetch --no-tags upstream main
+      - name: Verify thin overlay
+        run: python3 tools/check_avenox_overlay.py --upstream-ref upstream/main
+      - name: Check generated settings map
+        run: python3 tools/generate_settings_map.py --check
+      - name: Test and build debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testStandardRunTestsUnitTest testOfflineRunTestsUnitTest assembleDebug
+      - name: Upload debug APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: LeanType-Avenox-debug-${{ github.sha }}
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: avenox-reports-${{ github.sha }}
+          path: "*/build/reports"
+          if-no-files-found: ignore

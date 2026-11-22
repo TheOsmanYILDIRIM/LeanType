@@ -22,12 +22,16 @@ data class AppQuirk(
     val hideToolbar: Boolean = false,
     val alwaysShowSuggestions: Boolean = false,
     val useSelectionForWordReplacement: Boolean = false,
+    // AVENOX-HOOK:app-profile-model
+    val avenoxPrompt: String = "",
+    val avenoxPromptPosition: String = "off",
 ) {
     fun hasCustomSettings(): Boolean =
         forceWebEditor || stripNoEnterAction || (forceEnterAction != null) || forceIncognito ||
                 forceNonIncognito || forceDirectCommit || allowSymbolComposing || disableAutoSpace ||
                 allowTypeNullKeyboard || (autoCorrectionMode != null) || hideSuggestionStrip || hideToolbar ||
-                alwaysShowSuggestions || useSelectionForWordReplacement
+                alwaysShowSuggestions || useSelectionForWordReplacement || avenoxPrompt.isNotBlank() ||
+                avenoxPromptPosition != "off"
 
     fun toJson(): JSONObject {
         val json = JSONObject()
@@ -46,6 +50,8 @@ data class AppQuirk(
         if (hideToolbar) json.put("hideToolbar", true)
         if (alwaysShowSuggestions) json.put("alwaysShowSuggestions", true)
         if (useSelectionForWordReplacement) json.put("useSelectionForWordReplacement", true)
+        if (avenoxPrompt.isNotBlank()) json.put("avenoxPrompt", avenoxPrompt)
+        if (avenoxPromptPosition != "off") json.put("avenoxPromptPosition", avenoxPromptPosition)
         return json
     }
 
@@ -66,6 +72,8 @@ data class AppQuirk(
             val hideToolbar = json.optBoolean("hideToolbar", false)
             val alwaysShowSuggestions = json.optBoolean("alwaysShowSuggestions", false)
             val useSelectionForWordReplacement = json.optBoolean("useSelectionForWordReplacement", false)
+            val avenoxPrompt = json.optString("avenoxPrompt", "")
+            val avenoxPromptPosition = json.optString("avenoxPromptPosition", "off")
             return AppQuirk(
                 packageName = packageName,
                 forceWebEditor = forceWebEditor,
@@ -82,6 +90,8 @@ data class AppQuirk(
                 hideToolbar = hideToolbar,
                 alwaysShowSuggestions = alwaysShowSuggestions,
                 useSelectionForWordReplacement = useSelectionForWordReplacement,
+                avenoxPrompt = avenoxPrompt,
+                avenoxPromptPosition = avenoxPromptPosition,
             )
         }
     }

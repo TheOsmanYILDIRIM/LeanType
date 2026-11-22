@@ -1,0 +1,80 @@
+name: Avenox Upstream Sync
+
+on:
+  schedule:
+    - cron: "31 */4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: avenox-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Fetch upstream
+        id: upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream https://github.com/LeanBitLab/LeanType.git
+          git fetch upstream main --tags
+          SHA="$(git rev-parse upstream/main)"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Merge upstream candidate
+        if: steps.upstream.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Avenox Upstream Bot"
+          git config user.email "avenox-upstream-bot@users.noreply.github.com"
+          SHORT="$(git rev-parse --short upstream/main)"
+          if ! git merge --no-ff upstream/main -m "chore(sync): LeanType upstream $SHORT [skip ci]"; then
+            git diff --name-only --diff-filter=U >> "$GITHUB_STEP_SUMMARY" || true
+            git merge --abort || true
+            exit 1
+          fi
+      - uses: actions/setup-java@v5
+        if: steps.upstream.outputs.changed == 'true'
+        with:
+          java-version: "17"
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.upstream.outputs.changed == 'true'
+      - name: Verify overlay
+        if: steps.upstream.outputs.changed == 'true'
+        run: python3 tools/check_avenox_overlay.py --upstream-ref upstream/main
+      - name: Check generated settings map
+        if: steps.upstream.outputs.changed == 'true'
+        run: python3 tools/generate_settings_map.py --check
+      - name: Test upstream candidate
+        if: steps.upstream.outputs.changed == 'true'
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testStandardRunTestsUnitTest testOfflineRunTestsUnitTest assembleDebug
+      - name: Push verified merge
+        if: steps.upstream.outputs.changed == 'true'
+        run: git push origin HEAD:main
+      - name: Upload verified APKs
+        if: steps.upstream.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: LeanType-Avenox-upstream-${{ steps.upstream.outputs.sha }}
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 14

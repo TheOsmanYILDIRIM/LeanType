@@ -2471,4 +2471,27 @@ New dictionary:
     <string name="voice_piecewise_field_changed">Dictation stopped: the text field changed, the rest was not inserted</string>
     <!-- Long press on a search result in the settings (accessibility action) -->
     <string name="settings_search_show_in_screen">Show in its screen</string>
+
+    <!-- AVENOX-HOOK:prompt-strings -->
+    <string name="avenox_prompt_title">Prompt injection</string>
+    <string name="avenox_prompt_summary">Automatically add a reusable prompt only when this app sends the message. Your text stays clean while typing.</string>
+    <string name="avenox_prompt_template">Prompt template</string>
+    <string name="avenox_prompt_position_off">Off</string>
+    <string name="avenox_prompt_position_prefix">Before message</string>
+    <string name="avenox_prompt_position_suffix">After message</string>
+    <string name="avenox_prompt_badge_prefix">Prompt: before</string>
+    <string name="avenox_prompt_badge_suffix">Prompt: after</string>
+    <string name="avenox_mode_enabled">Prompt mode: %1$s</string>
+    <string name="avenox_mode_disabled">Prompt mode disabled</string>
+    <string name="custom_ai_keyword_insert_label">Insert</string>
+    <string name="custom_ai_keyword_insert_desc">Insert this key&apos;s text locally without calling an AI service.</string>
+    <string name="custom_ai_keyword_localsend_label">Insert + send</string>
+    <string name="custom_ai_keyword_localsend_desc">Insert this key&apos;s text locally and trigger the app&apos;s send action. Active app prompt injection is applied too.</string>
+    <string name="custom_ai_keyword_modeprefix_label">Mode: before</string>
+    <string name="custom_ai_keyword_modeprefix_desc">Use this key&apos;s text as the current app&apos;s automatic prompt before messages.</string>
+    <string name="custom_ai_keyword_modesuffix_label">Mode: after</string>
+    <string name="custom_ai_keyword_modesuffix_desc">Use this key&apos;s text as the current app&apos;s automatic prompt after messages.</string>
+    <string name="custom_ai_keyword_modeoff_label">Mode: off</string>
+    <string name="custom_ai_keyword_modeoff_desc">Disable automatic prompt injection for the current app without deleting its saved template.</string>
+
 </resources>

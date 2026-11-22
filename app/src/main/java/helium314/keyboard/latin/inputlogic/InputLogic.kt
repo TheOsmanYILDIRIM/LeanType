@@ -17,6 +17,7 @@ import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.inputmethod.CorrectionInfo
 import android.view.inputmethod.EditorInfo
+import helium314.keyboard.avenox.AvenoxPromptEngine // AVENOX-HOOK:prompt-send
 import helium314.keyboard.compat.AppQuirksManager
 import helium314.keyboard.compat.isDeviceLocked
 import helium314.keyboard.event.Event
@@ -1012,16 +1013,16 @@ class InputLogic(
             }
             KeyCode.UNDO -> sendDownUpKeyEventWithMetaState(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON)
             KeyCode.REDO -> sendDownUpKeyEventWithMetaState(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON)
-            KeyCode.CUSTOM_AI_1 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(1)
-            KeyCode.CUSTOM_AI_2 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(2)
-            KeyCode.CUSTOM_AI_3 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(3)
-            KeyCode.CUSTOM_AI_4 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(4)
-            KeyCode.CUSTOM_AI_5 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(5)
-            KeyCode.CUSTOM_AI_6 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(6)
-            KeyCode.CUSTOM_AI_7 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(7)
-            KeyCode.CUSTOM_AI_8 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(8)
-            KeyCode.CUSTOM_AI_9 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(9)
-            KeyCode.CUSTOM_AI_10 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(10)
+            KeyCode.CUSTOM_AI_1 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(1, inputTransaction.settingsValues, handler)
+            KeyCode.CUSTOM_AI_2 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(2, inputTransaction.settingsValues, handler)
+            KeyCode.CUSTOM_AI_3 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(3, inputTransaction.settingsValues, handler)
+            KeyCode.CUSTOM_AI_4 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(4, inputTransaction.settingsValues, handler)
+            KeyCode.CUSTOM_AI_5 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(5, inputTransaction.settingsValues, handler)
+            KeyCode.CUSTOM_AI_6 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(6, inputTransaction.settingsValues, handler)
+            KeyCode.CUSTOM_AI_7 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(7, inputTransaction.settingsValues, handler)
+            KeyCode.CUSTOM_AI_8 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(8, inputTransaction.settingsValues, handler)
+            KeyCode.CUSTOM_AI_9 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(9, inputTransaction.settingsValues, handler)
+            KeyCode.CUSTOM_AI_10 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(10, inputTransaction.settingsValues, handler)
             KeyCode.PROOFREAD -> if (!isDeviceLocked(mLatinIME)) handleProofread()
             KeyCode.TRANSLATE -> if (!isDeviceLocked(mLatinIME)) handleTranslate()
             KeyCode.SHOW_TRANSLATE_LANGUAGES -> if (!isDeviceLocked(mLatinIME)) handleShowTranslateLanguages()
@@ -2654,7 +2655,43 @@ class InputLogic(
             mConnection.finishComposingText()
             StatsUtils.onWordCommitUserTyped(typedWord, mWordComposer.isBatchMode())
         }
+        maybeApplyAvenoxPrompt(actionId)
         mConnection.performEditorAction(actionId)
+    }
+
+    private fun maybeApplyAvenoxPrompt(actionId: Int) {
+        if (actionId == EditorInfo.IME_ACTION_NONE ||
+            actionId == EditorInfo.IME_ACTION_NEXT ||
+            actionId == EditorInfo.IME_ACTION_PREVIOUS
+        ) return
+
+        val editorInfo = getCurrentInputEditorInfo() ?: return
+        if (InputTypeUtils.isAnyPasswordInputType(editorInfo.inputType)) return
+
+        val quirk = AppQuirksManager.getEffectiveQuirk(editorInfo.packageName) ?: return
+        if (!AvenoxPromptEngine.isEnabled(quirk.avenoxPrompt, quirk.avenoxPromptPosition)) return
+
+        val maxChars = 60000
+        val before = runCatching {
+            mConnection.getTextBeforeCursor(maxChars, 0)?.toString().orEmpty()
+        }.getOrDefault("")
+        val after = runCatching {
+            mConnection.getTextAfterCursor(maxChars, 0)?.toString().orEmpty()
+        }.getOrDefault("")
+        val original = before + after
+        if (original.isBlank()) return
+
+        val injected = AvenoxPromptEngine.apply(
+            original,
+            quirk.avenoxPrompt,
+            quirk.avenoxPromptPosition
+        )
+        if (injected == original) return
+
+        mConnection.finishComposingText()
+        mConnection.selectAll()
+        mConnection.commitText(injected, 1)
+        resetComposingState(true)
     }
 
     private fun performSpecificTldProcessingOnTextInput(text: String): String {
@@ -3160,9 +3197,76 @@ class InputLogic(
         mEmojiDictionaryFacilitator = null
     }
 
-    private fun handleCustomAIKey(index: Int) {
+    private fun handleCustomAIKey(index: Int, settingsValues: SettingsValues, handler: LatinIME.UIHandler) {
         val prefs = helium314.keyboard.latin.utils.DeviceProtectedUtils.getSharedPreferences(mLatinIME)
         var prompt = prefs.getString("pref_custom_ai_prompt_$index", "") ?: ""
+
+        val localCommand = AvenoxPromptEngine.detectLocalCommand(prompt)
+        if (localCommand != null) {
+            val localText = AvenoxPromptEngine.removeBehaviorTokens(prompt)
+            when (localCommand) {
+                AvenoxPromptEngine.COMMAND_INSERT -> {
+                    if (localText.isBlank()) {
+                        KeyboardSwitcher.getInstance().showToast(mLatinIME.getString(R.string.custom_ai_key_not_set), true)
+                        return
+                    }
+                    mConnection.finishComposingText()
+                    resetComposingState(true)
+                    mLatinIME.onTextInput(localText)
+                }
+                AvenoxPromptEngine.COMMAND_LOCAL_SEND -> {
+                    if (localText.isBlank()) {
+                        KeyboardSwitcher.getInstance().showToast(mLatinIME.getString(R.string.custom_ai_key_not_set), true)
+                        return
+                    }
+                    mConnection.finishComposingText()
+                    resetComposingState(true)
+                    mLatinIME.onTextInput(localText)
+                    val editorInfo = getCurrentInputEditorInfo()
+                    val actionId = InputTypeUtils.getImeOptionsActionIdFromEditorInfo(editorInfo)
+                    val effectiveAction = when {
+                        actionId == InputTypeUtils.IME_ACTION_CUSTOM_LABEL -> editorInfo?.actionId ?: EditorInfo.IME_ACTION_SEND
+                        actionId != EditorInfo.IME_ACTION_NONE -> actionId
+                        else -> EditorInfo.IME_ACTION_SEND
+                    }
+                    performEditorAction(effectiveAction, settingsValues, handler)
+                }
+                AvenoxPromptEngine.COMMAND_MODE_PREFIX,
+                AvenoxPromptEngine.COMMAND_MODE_SUFFIX -> {
+                    if (localText.isBlank()) {
+                        KeyboardSwitcher.getInstance().showToast(mLatinIME.getString(R.string.custom_ai_key_not_set), true)
+                        return
+                    }
+                    val position = if (localCommand == AvenoxPromptEngine.COMMAND_MODE_PREFIX) {
+                        AvenoxPromptEngine.POSITION_PREFIX
+                    } else {
+                        AvenoxPromptEngine.POSITION_SUFFIX
+                    }
+                    AppQuirksManager.updateAvenoxPrompt(getCurrentInputEditorInfo()?.packageName, localText, position)
+                    KeyboardSwitcher.getInstance().showToast(
+                        mLatinIME.getString(
+                            R.string.avenox_mode_enabled,
+                            if (position == AvenoxPromptEngine.POSITION_PREFIX) {
+                                mLatinIME.getString(R.string.avenox_prompt_position_prefix)
+                            } else {
+                                mLatinIME.getString(R.string.avenox_prompt_position_suffix)
+                            }
+                        ),
+                        false
+                    )
+                }
+                AvenoxPromptEngine.COMMAND_MODE_OFF -> {
+                    AppQuirksManager.updateAvenoxPrompt(
+                        getCurrentInputEditorInfo()?.packageName,
+                        null,
+                        AvenoxPromptEngine.POSITION_OFF
+                    )
+                    KeyboardSwitcher.getInstance().showToast(mLatinIME.getString(R.string.avenox_mode_disabled), false)
+                }
+            }
+            return
+        }
+
         val systemInstructionBuilder = StringBuilder()
         var shouldAppend = false
 

@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "upstream": {
+    "repository": "LeanBitLab/LeanType",
+    "branch": "main"
+  },
+  "owned_prefixes": [
+    "app/src/main/java/helium314/keyboard/avenox/",
+    "app/src/test/java/helium314/keyboard/avenox/",
+    ".github/workflows/avenox-",
+    "docs/AVENOX_",
+    "tools/check_avenox_overlay.py"
+  ],
+  "owned_files": [
+    "AGENTS.md"
+  ],
+  "integration_points": [
+    {
+      "path": "app/src/main/java/helium314/keyboard/compat/AppQuirk.kt",
+      "marker": "AVENOX-HOOK:app-profile-model"
+    },
+    {
+      "path": "app/src/main/java/helium314/keyboard/compat/AppQuirksManager.kt",
+      "marker": "AVENOX-HOOK:app-profile-manager"
+    },
+    {
+      "path": "app/src/main/java/helium314/keyboard/settings/screens/AppQuirksScreen.kt",
+      "marker": "AVENOX-HOOK:app-profile-ui"
+    },
+    {
+      "path": "app/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.kt",
+      "marker": "AVENOX-HOOK:prompt-send"
+    },
+    {
+      "path": "app/src/main/java/helium314/keyboard/settings/screens/CustomAIKeysScreen.kt",
+      "marker": "AVENOX-HOOK:quick-node-config"
+    },
+    {
+      "path": "app/src/main/res/values/strings.xml",
+      "marker": "AVENOX-HOOK:prompt-strings"
+    },
+    {
+      "path": "app/src/main/res/values-tr/strings.xml",
+      "marker": "AVENOX-HOOK:prompt-strings-tr"
+    }
+  ]
+}

@@ -247,8 +247,17 @@ fun ConfigCustomAIKeyScreen(
         "#append" to stringResource(R.string.custom_ai_keyword_append_label),
         "#showthought" to stringResource(R.string.custom_ai_keyword_showthought_label)
     )
+    // AVENOX-HOOK:quick-node-config
+    val localActions = listOf(
+        "#insert" to stringResource(R.string.custom_ai_keyword_insert_label),
+        "#localsend" to stringResource(R.string.custom_ai_keyword_localsend_label),
+        "#modeprefix" to stringResource(R.string.custom_ai_keyword_modeprefix_label),
+        "#modesuffix" to stringResource(R.string.custom_ai_keyword_modesuffix_label),
+        "#modeoff" to stringResource(R.string.custom_ai_keyword_modeoff_label),
+    )
+    val localActionKeywords = localActions.map { it.first }.toSet()
 
-    val allKeywords = (modes.map { it.first } + modifiersList.map { it.first })
+    val allKeywords = (modes.map { it.first } + modifiersList.map { it.first } + localActions.map { it.first })
     
     // Split initial prompt into custom text and keywords
     val initialKeywords = initialPrompt.split(" ").filter { it in allKeywords }.toSet()
@@ -269,7 +278,12 @@ fun ConfigCustomAIKeyScreen(
         "#generate" to stringResource(R.string.custom_ai_keyword_generate_desc),
         "#outputonly" to stringResource(R.string.custom_ai_keyword_outputonly_desc),
         "#append" to stringResource(R.string.custom_ai_keyword_append_desc),
-        "#showthought" to stringResource(R.string.custom_ai_keyword_showthought_desc)
+        "#showthought" to stringResource(R.string.custom_ai_keyword_showthought_desc),
+        "#insert" to stringResource(R.string.custom_ai_keyword_insert_desc),
+        "#localsend" to stringResource(R.string.custom_ai_keyword_localsend_desc),
+        "#modeprefix" to stringResource(R.string.custom_ai_keyword_modeprefix_desc),
+        "#modesuffix" to stringResource(R.string.custom_ai_keyword_modesuffix_desc),
+        "#modeoff" to stringResource(R.string.custom_ai_keyword_modeoff_desc),
     )
 
     // Prevents nested scrollable areas from bubbling leftover scroll events to the parent screen
@@ -360,7 +374,7 @@ fun ConfigCustomAIKeyScreen(
                             updateToolbarKeyStatus(context, keyEnum, finalPrompt.isNotEmpty())
                             onClickBack()
                         },
-                        enabled = customText.isNotBlank() && selectedKeywords.isNotEmpty(),
+                        enabled = selectedKeywords.contains("#modeoff") || (customText.isNotBlank() && selectedKeywords.isNotEmpty()),
                         modifier = if (initialPrompt.isNotBlank()) Modifier.weight(1f) else Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -412,15 +426,15 @@ fun ConfigCustomAIKeyScreen(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                (modes + modifiersList).forEach { (keyword, label) ->
+                (modes + modifiersList + localActions).forEach { (keyword, label) ->
                     val isSelected = selectedKeywords.contains(keyword)
                     androidx.compose.material3.FilterChip(
                         selected = isSelected,
                         onClick = {
-                            selectedKeywords = if (isSelected) {
-                                selectedKeywords - keyword
-                            } else {
-                                selectedKeywords + keyword
+                            selectedKeywords = when {
+                                isSelected -> selectedKeywords - keyword
+                                keyword in localActionKeywords -> setOf(keyword)
+                                else -> (selectedKeywords - localActionKeywords) + keyword
                             }
                         },
                         label = { Text(label) },

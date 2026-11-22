@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
+import helium314.keyboard.avenox.AvenoxPromptEngine // AVENOX-HOOK:app-profile-manager
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.Log
 import helium314.keyboard.latin.utils.prefs
@@ -219,6 +220,18 @@ object AppQuirksManager {
     fun getUserQuirk(packageName: String): AppQuirk? = userQuirks[packageName]
 
     fun getAllUserQuirks(): Map<String, AppQuirk> = HashMap(userQuirks)
+
+    fun updateAvenoxPrompt(packageName: String?, prompt: String?, position: String) {
+        if (packageName.isNullOrBlank()) return
+        val normalizedPosition = AvenoxPromptEngine.normalizePosition(position)
+        val base = getUserQuirk(packageName) ?: defaultQuirk(packageName) ?: AppQuirk(packageName)
+        saveQuirk(
+            base.copy(
+                avenoxPrompt = prompt?.trim() ?: base.avenoxPrompt,
+                avenoxPromptPosition = normalizedPosition,
+            )
+        )
+    }
 
     fun saveQuirk(quirk: AppQuirk) {
         if (quirk.hasCustomSettings()) {
