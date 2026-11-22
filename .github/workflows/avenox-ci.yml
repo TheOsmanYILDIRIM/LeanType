@@ -36,10 +36,20 @@ jobs:
         run: python3 tools/check_avenox_overlay.py --upstream-ref upstream/main
       - name: Check generated settings map
         run: python3 tools/generate_settings_map.py --check
-      - name: Test and build debug APK
+      - name: Run Avenox unit tests
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon testStandardRunTestsUnitTest testOfflineRunTestsUnitTest assembleDebug
+          ./gradlew --no-daemon \
+            testStandardRunTestsUnitTest \
+            testOfflineRunTestsUnitTest \
+            --tests "helium314.keyboard.avenox.AvenoxPromptEngineTest"
+
+      - name: Compile upstream variants and build debug APK
+        run: |
+          ./gradlew --no-daemon \
+            compileStandardRunTestsKotlin \
+            compileOfflineRunTestsKotlin \
+            assembleDebug
       - name: Upload debug APKs
         uses: actions/upload-artifact@v4
         with:

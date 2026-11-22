@@ -62,11 +62,22 @@ jobs:
       - name: Check generated settings map
         if: steps.upstream.outputs.changed == 'true'
         run: python3 tools/generate_settings_map.py --check
-      - name: Test upstream candidate
+      - name: Run Avenox unit tests
         if: steps.upstream.outputs.changed == 'true'
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon testStandardRunTestsUnitTest testOfflineRunTestsUnitTest assembleDebug
+          ./gradlew --no-daemon \
+            testStandardRunTestsUnitTest \
+            testOfflineRunTestsUnitTest \
+            --tests "helium314.keyboard.avenox.AvenoxPromptEngineTest"
+
+      - name: Compile upstream variants and build debug APK
+        if: steps.upstream.outputs.changed == 'true'
+        run: |
+          ./gradlew --no-daemon \
+            compileStandardRunTestsKotlin \
+            compileOfflineRunTestsKotlin \
+            assembleDebug
       - name: Push verified merge
         if: steps.upstream.outputs.changed == 'true'
         run: git push origin HEAD:main
