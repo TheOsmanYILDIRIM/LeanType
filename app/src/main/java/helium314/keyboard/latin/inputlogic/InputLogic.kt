@@ -2675,10 +2675,22 @@ class InputLogic(
         val before = runCatching {
             mConnection.getTextBeforeCursor(maxChars, 0)?.toString().orEmpty()
         }.getOrDefault("")
+        val selected = if (mConnection.hasSelection()) {
+            runCatching { mConnection.getSelectedText(0)?.toString().orEmpty() }.getOrDefault("")
+        } else {
+            ""
+        }
         val after = runCatching {
             mConnection.getTextAfterCursor(maxChars, 0)?.toString().orEmpty()
         }.getOrDefault("")
-        val original = before + after
+
+        // Never replace the editor if Android may have truncated either side.
+        if (before.length >= maxChars || after.length >= maxChars) {
+            Log.w(TAG, "Skipping Avenox prompt injection because editor text exceeds safe read window")
+            return
+        }
+
+        val original = before + selected + after
         if (original.isBlank()) return
 
         val injected = AvenoxPromptEngine.apply(

@@ -277,13 +277,13 @@ fun AppQuirksScreen(
                         MaterialTheme.colorScheme.onSecondaryContainer
                     ))
                 }
-                if (effective?.avenoxPromptPosition == AvenoxPromptEngine.POSITION_PREFIX && effective.avenoxPrompt.isNotBlank()) {
+                if (effective?.avenoxPromptPosition == AvenoxPromptEngine.POSITION_PREFIX && effective.avenoxPrompt?.isNotBlank() == true) {
                     badges.add(BadgeInfo(
                         stringResource(R.string.avenox_prompt_badge_prefix),
                         MaterialTheme.colorScheme.primaryContainer,
                         MaterialTheme.colorScheme.onPrimaryContainer
                     ))
-                } else if (effective?.avenoxPromptPosition == AvenoxPromptEngine.POSITION_SUFFIX && effective.avenoxPrompt.isNotBlank()) {
+                } else if (effective?.avenoxPromptPosition == AvenoxPromptEngine.POSITION_SUFFIX && effective.avenoxPrompt?.isNotBlank() == true) {
                     badges.add(BadgeInfo(
                         stringResource(R.string.avenox_prompt_badge_suffix),
                         MaterialTheme.colorScheme.primaryContainer,
