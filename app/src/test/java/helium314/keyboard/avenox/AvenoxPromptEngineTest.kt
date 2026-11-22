@@ -34,4 +34,13 @@ class AvenoxPromptEngineTest {
         assertEquals("Devam et", AvenoxPromptEngine.removeBehaviorTokens("Devam et #localsend #outputonly"))
         assertTrue(AvenoxPromptEngine.isEnabled("SYSTEM", AvenoxPromptEngine.POSITION_PREFIX))
     }
+
+    @Test
+    fun localToolbarLabelsAreReadableWithoutManualTags() {
+        assertEquals("Devam", AvenoxPromptEngine.toolbarLabel("Devam et #localsend"))
+        assertEquals("Düzelt", AvenoxPromptEngine.toolbarLabel("Düzelt #insert"))
+        assertEquals("BAŞA", AvenoxPromptEngine.toolbarLabel("uzun sistem promptu #modeprefix"))
+        assertEquals("Beyin", AvenoxPromptEngine.toolbarLabel("uzun sistem promptu #modeprefix", "Beyin"))
+        assertEquals("", AvenoxPromptEngine.toolbarLabel("normal cloud prompt #proofread"))
+    }
 }

@@ -1740,7 +1740,7 @@ Metin düzeltme ve yeniden yazma için cihaz üzerinde GGUF / llama.cpp çıkar�
 
     <!-- AVENOX-HOOK:prompt-strings-tr -->
     <string name="avenox_prompt_title">Prompt enjeksiyonu</string>
-    <string name="avenox_prompt_summary">Bu uygulama mesajı gönderirken hazır promptu otomatik ekler. Yazarken metin alanı temiz kalır.</string>
+    <string name="avenox_prompt_summary">Klavyeden gönderirken hazır promptu otomatik ekler. Prompt modu açıkken klavyenin işlem tuşu Gönder olur. Uygulamanın kendi Gönder düğmesi normal klavye tarafından yakalanamaz.</string>
     <string name="avenox_prompt_template">Prompt şablonu</string>
     <string name="avenox_prompt_position_off">Kapalı</string>
     <string name="avenox_prompt_position_prefix">Mesajın başına</string>

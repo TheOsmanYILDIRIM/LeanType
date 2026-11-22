@@ -20,6 +20,7 @@ import androidx.core.view.forEach
 import androidx.core.view.ViewCompat
 import helium314.keyboard.keyboard.internal.KeyboardIconsSet
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
+import helium314.keyboard.avenox.AvenoxPromptEngine // AVENOX-HOOK:toolbar-labels
 import helium314.keyboard.latin.BuildConfig
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.common.Constants.Separators
@@ -83,9 +84,15 @@ fun createToolbarKey(context: Context, key: ToolbarKey): ImageButton {
     val tag = if (index != null) {
         context.prefs().getString("pref_custom_ai_tag_$index", "") ?: ""
     } else ""
-    
-    val rawDrawable = if (showTags && tag.isNotBlank()) {
-        TagDrawable(tag.take(3).uppercase(Locale.US))
+    val prompt = if (index != null) {
+        context.prefs().getString("pref_custom_ai_prompt_$index", "") ?: ""
+    } else ""
+    val localCommand = if (index != null) AvenoxPromptEngine.detectLocalCommand(prompt) else null
+    val readableTag = if (index != null) AvenoxPromptEngine.toolbarLabel(prompt, tag) else ""
+
+    val rawDrawable = if ((showTags || localCommand != null) && readableTag.isNotBlank()) {
+        button.contentDescription = readableTag
+        TagDrawable(readableTag.uppercase(Locale.getDefault()))
     } else {
         KeyboardIconsSet.instance.getNewDrawable(key.name, context)
     }
@@ -166,8 +173,13 @@ class TagDrawable(private val text: String) : Drawable() {
         val activeFilter = tintFilter ?: internalColorFilter
         paint.colorFilter = activeFilter
 
-        // Scaled text size based on height
-        paint.textSize = bounds.height() * 0.37f
+        // Keep short action names readable inside the toolbar key.
+        paint.textSize = bounds.height() * when {
+            text.length <= 3 -> 0.37f
+            text.length <= 4 -> 0.31f
+            text.length <= 5 -> 0.27f
+            else -> 0.23f
+        }
         
         // Draw centered text
         val textHeight = paint.descent() - paint.ascent()

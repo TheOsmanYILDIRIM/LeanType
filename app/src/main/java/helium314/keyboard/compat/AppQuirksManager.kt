@@ -112,6 +112,12 @@ object AppQuirksManager {
             } else {
                 (result and EditorInfo.IME_MASK_ACTION.inv() and EditorInfo.IME_FLAG_NO_ENTER_ACTION.inv()) or action
             }
+        } else if (AvenoxPromptEngine.isEnabled(quirk.avenoxPrompt, quirk.avenoxPromptPosition)) {
+            // AVENOX-HOOK:smart-send-action
+            // Host-app Send buttons bypass the IME. Prompt mode therefore turns the keyboard
+            // action key into Send, which guarantees that prompt injection runs before submit.
+            result = (result and EditorInfo.IME_MASK_ACTION.inv() and EditorInfo.IME_FLAG_NO_ENTER_ACTION.inv()) or
+                    EditorInfo.IME_ACTION_SEND
         } else if (quirk.stripNoEnterAction) {
             if (result and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0) {
                 result -= EditorInfo.IME_FLAG_NO_ENTER_ACTION

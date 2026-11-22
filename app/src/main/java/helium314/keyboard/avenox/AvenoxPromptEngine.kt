@@ -54,6 +54,23 @@ object AvenoxPromptEngine {
         return localCommands.firstOrNull { it in tokens }
     }
 
+    fun toolbarLabel(prompt: String, explicitTag: String? = null): String {
+        val explicit = explicitTag?.trim().orEmpty()
+        if (explicit.isNotEmpty()) return explicit.take(6)
+
+        return when (detectLocalCommand(prompt)) {
+            COMMAND_MODE_PREFIX -> "BAŞA"
+            COMMAND_MODE_SUFFIX -> "SONA"
+            COMMAND_MODE_OFF -> "KAPAT"
+            COMMAND_INSERT -> removeBehaviorTokens(prompt).firstWordOr("EKLE")
+            COMMAND_LOCAL_SEND -> removeBehaviorTokens(prompt).firstWordOr("GÖNDER")
+            else -> ""
+        }
+    }
+
+    private fun String.firstWordOr(fallback: String): String =
+        trim().split(Regex("\\s+")).firstOrNull { it.isNotBlank() }?.take(6) ?: fallback.take(6)
+
     fun removeBehaviorTokens(prompt: String): String =
         prompt.split(Regex("\\s+"))
             .filterNot { it in allBehaviorTokens }

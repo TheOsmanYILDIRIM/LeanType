@@ -2474,7 +2474,7 @@ New dictionary:
 
     <!-- AVENOX-HOOK:prompt-strings -->
     <string name="avenox_prompt_title">Prompt injection</string>
-    <string name="avenox_prompt_summary">Automatically add a reusable prompt only when this app sends the message. Your text stays clean while typing.</string>
+    <string name="avenox_prompt_summary">Adds the reusable prompt when you send from the keyboard. While prompt mode is active, the keyboard action key becomes Send. The app\'s own Send button cannot be intercepted by a normal keyboard.</string>
     <string name="avenox_prompt_template">Prompt template</string>
     <string name="avenox_prompt_position_off">Off</string>
     <string name="avenox_prompt_position_prefix">Before message</string>

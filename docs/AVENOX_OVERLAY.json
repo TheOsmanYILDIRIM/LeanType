@@ -42,6 +42,10 @@
     {
       "path": "app/src/main/res/values-tr/strings.xml",
       "marker": "AVENOX-HOOK:prompt-strings-tr"
+    },
+    {
+      "path": "app/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt",
+      "marker": "AVENOX-HOOK:toolbar-labels"
     }
   ]
 }
