@@ -26,7 +26,11 @@ object AvenoxPromptEngine {
     )
 
     const val COMMAND_INSERT = "#insert"
+    const val COMMAND_PREFIX = "#prefix"
+    const val COMMAND_SUFFIX = "#suffix"
+    const val COMMAND_REPLACE = "#replace"
     const val COMMAND_LOCAL_SEND = "#localsend"
+    const val COMMAND_RAW_SEND = "#rawsend"
     const val COMMAND_MODE_PREFIX = "#modeprefix"
     const val COMMAND_MODE_SUFFIX = "#modesuffix"
     const val COMMAND_MODE_OFF = "#modeoff"
@@ -42,7 +46,11 @@ object AvenoxPromptEngine {
     private val positions = setOf(POSITION_OFF, POSITION_PREFIX, POSITION_SUFFIX, POSITION_WRAPPER)
     private val localCommands = listOf(
         COMMAND_LOCAL_SEND,
+        COMMAND_RAW_SEND,
         COMMAND_INSERT,
+        COMMAND_PREFIX,
+        COMMAND_SUFFIX,
+        COMMAND_REPLACE,
         COMMAND_MODE_PREFIX,
         COMMAND_MODE_SUFFIX,
         COMMAND_MODE_OFF,
@@ -98,6 +106,24 @@ object AvenoxPromptEngine {
         val scope = rawScope.orEmpty().trim()
         if (scope.isEmpty()) return true
         return normalizeMode(currentMode) in parseModeScope(scope)
+    }
+
+    fun parseAppScope(raw: String?): List<String> =
+        raw.orEmpty()
+            .split(',', ';', '\n')
+            .map { it.trim().lowercase() }
+            .filter { it.isNotEmpty() }
+
+    fun isNodeVisibleInApp(rawScope: String?, packageName: String?): Boolean {
+        val scope = parseAppScope(rawScope)
+        if (scope.isEmpty()) return true
+        val pkg = packageName?.trim()?.lowercase().orEmpty()
+        if (pkg.isEmpty()) return false
+        return scope.any { pattern ->
+            pattern == "*" ||
+                pattern == pkg ||
+                (pattern.endsWith("*") && pkg.startsWith(pattern.dropLast(1)))
+        }
     }
 
     fun isEnabled(prompt: String?, position: String?): Boolean =
@@ -188,7 +214,11 @@ object AvenoxPromptEngine {
             COMMAND_MODE_SUFFIX -> "SONA"
             COMMAND_MODE_OFF -> "KAPAT"
             COMMAND_INSERT -> removeBehaviorTokens(prompt).firstWordOr("EKLE")
+            COMMAND_PREFIX -> removeBehaviorTokens(prompt).firstWordOr("BAŞA")
+            COMMAND_SUFFIX -> removeBehaviorTokens(prompt).firstWordOr("SONA")
+            COMMAND_REPLACE -> removeBehaviorTokens(prompt).firstWordOr("DEĞİŞ")
             COMMAND_LOCAL_SEND -> removeBehaviorTokens(prompt).firstWordOr("GÖNDER")
+            COMMAND_RAW_SEND -> "HAM"
             else -> ""
         }
     }

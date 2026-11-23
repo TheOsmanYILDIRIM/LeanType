@@ -234,6 +234,7 @@ fun ConfigCustomAIKeyScreen(
     val initialModeScope = AvenoxPromptEngine.parseModeScope(
         prefs.getString("pref_custom_ai_modes_$index", "")
     )
+    val initialAppScope = prefs.getString("pref_custom_ai_apps_$index", "") ?: ""
     val keyEnum = CUSTOM_AI_KEY_ENUMS[index - 1]
     
     val modes = listOf(
@@ -254,7 +255,11 @@ fun ConfigCustomAIKeyScreen(
     // AVENOX-HOOK:quick-node-config
     val localActions = listOf(
         "#insert" to stringResource(R.string.custom_ai_keyword_insert_label),
+        "#prefix" to stringResource(R.string.custom_ai_keyword_prefix_label),
+        "#suffix" to stringResource(R.string.custom_ai_keyword_suffix_label),
+        "#replace" to stringResource(R.string.custom_ai_keyword_replace_label),
         "#localsend" to stringResource(R.string.custom_ai_keyword_localsend_label),
+        "#rawsend" to stringResource(R.string.custom_ai_keyword_rawsend_label),
         "#modeprefix" to stringResource(R.string.custom_ai_keyword_modeprefix_label),
         "#modesuffix" to stringResource(R.string.custom_ai_keyword_modesuffix_label),
         "#modeoff" to stringResource(R.string.custom_ai_keyword_modeoff_label),
@@ -271,6 +276,7 @@ fun ConfigCustomAIKeyScreen(
     var tagText by remember { mutableStateOf(initialTag) }
     var selectedKeywords by remember { mutableStateOf(initialKeywords) }
     var selectedNodeModes by remember { mutableStateOf(initialModeScope) }
+    var appScopeText by remember { mutableStateOf(initialAppScope) }
 
     val nodeModes = listOf(
         AvenoxPromptEngine.MODE_NORMAL to stringResource(R.string.avenox_mode_normal),
@@ -294,7 +300,11 @@ fun ConfigCustomAIKeyScreen(
         "#append" to stringResource(R.string.custom_ai_keyword_append_desc),
         "#showthought" to stringResource(R.string.custom_ai_keyword_showthought_desc),
         "#insert" to stringResource(R.string.custom_ai_keyword_insert_desc),
+        "#prefix" to stringResource(R.string.custom_ai_keyword_prefix_desc),
+        "#suffix" to stringResource(R.string.custom_ai_keyword_suffix_desc),
+        "#replace" to stringResource(R.string.custom_ai_keyword_replace_desc),
         "#localsend" to stringResource(R.string.custom_ai_keyword_localsend_desc),
+        "#rawsend" to stringResource(R.string.custom_ai_keyword_rawsend_desc),
         "#modeprefix" to stringResource(R.string.custom_ai_keyword_modeprefix_desc),
         "#modesuffix" to stringResource(R.string.custom_ai_keyword_modesuffix_desc),
         "#modeoff" to stringResource(R.string.custom_ai_keyword_modeoff_desc),
@@ -333,6 +343,11 @@ fun ConfigCustomAIKeyScreen(
                                 } else {
                                     putString("pref_custom_ai_modes_$index", selectedNodeModes.sorted().joinToString(","))
                                 }
+                                if (appScopeText.isBlank()) {
+                                    remove("pref_custom_ai_apps_$index")
+                                } else {
+                                    putString("pref_custom_ai_apps_$index", appScopeText.trim())
+                                }
                             }
                             updateToolbarKeyStatus(context, keyEnum, finalPrompt.isNotEmpty())
                             onClickBack()
@@ -366,6 +381,8 @@ fun ConfigCustomAIKeyScreen(
                                     remove(prefKey)
                                     remove("pref_custom_ai_tag_$index")
                                     remove("pref_custom_ai_modes_$index")
+                                    remove("pref_custom_ai_apps_$index")
+                                    remove("pref_custom_ai_direct_send_$index")
                                 }
                                 updateToolbarKeyStatus(context, keyEnum, false)
                                 onClickBack()
@@ -395,11 +412,16 @@ fun ConfigCustomAIKeyScreen(
                                 } else {
                                     putString("pref_custom_ai_modes_$index", selectedNodeModes.sorted().joinToString(","))
                                 }
+                                if (appScopeText.isBlank()) {
+                                    remove("pref_custom_ai_apps_$index")
+                                } else {
+                                    putString("pref_custom_ai_apps_$index", appScopeText.trim())
+                                }
                             }
                             updateToolbarKeyStatus(context, keyEnum, finalPrompt.isNotEmpty())
                             onClickBack()
                         },
-                        enabled = selectedKeywords.contains("#modeoff") || (customText.isNotBlank() && selectedKeywords.isNotEmpty()),
+                        enabled = selectedKeywords.any { it == "#modeoff" || it == "#rawsend" } || (customText.isNotBlank() && selectedKeywords.isNotEmpty()),
                         modifier = if (initialPrompt.isNotBlank()) Modifier.weight(1f) else Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -480,6 +502,22 @@ fun ConfigCustomAIKeyScreen(
                     )
                 }
             }
+
+            androidx.compose.material3.OutlinedTextField(
+                value = appScopeText,
+                onValueChange = { appScopeText = it },
+                label = { Text(stringResource(R.string.avenox_node_apps_label)) },
+                supportingText = { Text(stringResource(R.string.avenox_node_apps_summary)) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            )
+
+            SwitchPreference(
+                name = stringResource(R.string.avenox_node_direct_send_title),
+                key = "pref_custom_ai_direct_send_$index",
+                default = false,
+                description = stringResource(R.string.avenox_node_direct_send_summary)
+            )
 
             Text(
                 text = stringResource(R.string.avenox_template_variables_help),

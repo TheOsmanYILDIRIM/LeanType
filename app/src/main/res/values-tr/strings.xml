@@ -1780,4 +1780,21 @@ Metin düzeltme ve yeniden yazma için cihaz üzerinde GGUF / llama.cpp çıkar�
     <string name="avenox_node_modes_summary">Bu hızlı düğümün hangi Avenox modlarında görüneceğini seç. Tüm modlar mevcut davranışı korur.</string>
     <string name="avenox_node_modes_all">Tüm modlar</string>
 
+
+    <!-- AVENOX-HOOK:node-actions-strings-tr -->
+    <string name="custom_ai_keyword_prefix_label">Başa ekle</string>
+    <string name="custom_ai_keyword_prefix_desc">Bu düğümün metnini mevcut metin alanının tamamının başına ekler.</string>
+    <string name="custom_ai_keyword_suffix_label">Sona ekle</string>
+    <string name="custom_ai_keyword_suffix_desc">Bu düğümün metnini mevcut metin alanının tamamının sonuna ekler.</string>
+    <string name="custom_ai_keyword_replace_label">Değiştir</string>
+    <string name="custom_ai_keyword_replace_desc">Seçim varsa seçimi, yoksa metin alanının tamamını değiştirir.</string>
+    <string name="custom_ai_keyword_rawsend_label">Promptsuz gönder</string>
+    <string name="custom_ai_keyword_rawsend_desc">Aktif Avenox promptunu uygulamadan uygulamanın gönder eylemini çalıştırır.</string>
+    <string name="avenox_node_apps_label">İzin verilen uygulamalar</string>
+    <string name="avenox_node_apps_summary">İsteğe bağlı paket adlarını virgülle ayır. Tümü için * veya com.google.* gibi önek kullan. Boşsa tüm uygulamalarda görünür.</string>
+    <string name="avenox_node_direct_send_title">İşlemden sonra gönder</string>
+    <string name="avenox_node_direct_send_summary">Ekle, Başa ekle, Sona ekle veya Değiştir sonrasında Gönder çalışır ve aktif uygulama promptu uygulanır.</string>
+    <string name="avenox_node_unavailable">Bu Avenox düğümü mevcut uygulama veya modda kullanılamaz.</string>
+    <string name="avenox_editor_too_long">Metin alanı güvenli Avenox değiştirmesi için fazla uzun.</string>
+
 </resources>

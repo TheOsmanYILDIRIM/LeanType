@@ -85,6 +85,21 @@ class AvenoxPromptEngineTest {
     }
 
     @Test
+    fun appScopesSupportExactAndPrefixWildcard() {
+        assertTrue(AvenoxPromptEngine.isNodeVisibleInApp("", "com.example.app"))
+        assertTrue(AvenoxPromptEngine.isNodeVisibleInApp("com.openai.chatgpt", "com.openai.chatgpt"))
+        assertTrue(AvenoxPromptEngine.isNodeVisibleInApp("com.google.*", "com.google.android.apps.gemini"))
+        assertFalse(AvenoxPromptEngine.isNodeVisibleInApp("com.openai.chatgpt", "com.github.android"))
+    }
+
+    @Test
+    fun extraLocalCommandsAreDetectedAndStripped() {
+        assertEquals(AvenoxPromptEngine.COMMAND_PREFIX, AvenoxPromptEngine.detectLocalCommand("Context #prefix"))
+        assertEquals(AvenoxPromptEngine.COMMAND_RAW_SEND, AvenoxPromptEngine.detectLocalCommand("#rawsend"))
+        assertEquals("Context", AvenoxPromptEngine.removeBehaviorTokens("Context #prefix"))
+    }
+
+    @Test
     fun offOrBlankPromptLeavesTextUnchanged() {
         assertEquals("hello", AvenoxPromptEngine.apply("hello", "SYSTEM", AvenoxPromptEngine.POSITION_OFF))
         assertEquals("hello", AvenoxPromptEngine.apply("hello", " ", AvenoxPromptEngine.POSITION_PREFIX))

@@ -2514,4 +2514,21 @@ New dictionary:
     <string name="avenox_node_modes_summary">Choose which Avenox modes show this quick node. All modes keeps current behavior.</string>
     <string name="avenox_node_modes_all">All modes</string>
 
+
+    <!-- AVENOX-HOOK:node-actions-strings -->
+    <string name="custom_ai_keyword_prefix_label">Prefix</string>
+    <string name="custom_ai_keyword_prefix_desc">Add this node&apos;s text before the whole current editor text.</string>
+    <string name="custom_ai_keyword_suffix_label">Suffix</string>
+    <string name="custom_ai_keyword_suffix_desc">Add this node&apos;s text after the whole current editor text.</string>
+    <string name="custom_ai_keyword_replace_label">Replace</string>
+    <string name="custom_ai_keyword_replace_desc">Replace the selection, or the whole editor when nothing is selected.</string>
+    <string name="custom_ai_keyword_rawsend_label">Send without prompt</string>
+    <string name="custom_ai_keyword_rawsend_desc">Trigger the app send action without applying the current Avenox prompt.</string>
+    <string name="avenox_node_apps_label">Allowed apps</string>
+    <string name="avenox_node_apps_summary">Optional package names separated by commas. Use * for all or a prefix like com.google.*. Blank means all apps.</string>
+    <string name="avenox_node_direct_send_title">Send after action</string>
+    <string name="avenox_node_direct_send_summary">After Insert, Prefix, Suffix or Replace, trigger Send and apply the active app prompt.</string>
+    <string name="avenox_node_unavailable">This Avenox node is not available in the current app or mode.</string>
+    <string name="avenox_editor_too_long">The editor text is too long for a safe Avenox replacement.</string>
+
 </resources>

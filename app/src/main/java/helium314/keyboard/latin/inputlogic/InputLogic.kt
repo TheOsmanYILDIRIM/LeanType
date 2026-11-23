@@ -2645,7 +2645,8 @@ class InputLogic(
     private fun performEditorAction(
         actionId: Int,
         settingsValues: SettingsValues,
-        handler: LatinIME.UIHandler
+        handler: LatinIME.UIHandler,
+        applyAvenoxPrompt: Boolean = true,
     ) {
         if (mWordComposer.isComposingWord()) {
             val typedWord = mWordComposer.getTypedWord()
@@ -2658,7 +2659,9 @@ class InputLogic(
             mConnection.finishComposingText()
             StatsUtils.onWordCommitUserTyped(typedWord, mWordComposer.isBatchMode())
         }
-        maybeApplyAvenoxPrompt(actionId)
+        if (applyAvenoxPrompt) {
+            maybeApplyAvenoxPrompt(actionId)
+        }
         mConnection.performEditorAction(actionId)
     }
 
@@ -2710,7 +2713,7 @@ class InputLogic(
         resetComposingState(true)
     }
 
-    private fun readAvenoxEditorText(): String {
+    private fun readAvenoxEditorText(): String? {
         val maxChars = 60000
         val before = runCatching {
             mConnection.getTextBeforeCursor(maxChars, 0)?.toString().orEmpty()
@@ -2723,7 +2726,25 @@ class InputLogic(
         val after = runCatching {
             mConnection.getTextAfterCursor(maxChars, 0)?.toString().orEmpty()
         }.getOrDefault("")
+        if (before.length >= maxChars || after.length >= maxChars) return null
         return before + selected + after
+    }
+
+    private fun replaceAvenoxEditorText(text: String) {
+        mConnection.finishComposingText()
+        resetComposingState(true)
+        mConnection.selectAll()
+        mConnection.commitText(text, 1)
+    }
+
+    private fun getAvenoxSendActionId(): Int {
+        val editorInfo = getCurrentInputEditorInfo()
+        val actionId = InputTypeUtils.getImeOptionsActionIdFromEditorInfo(editorInfo)
+        return when {
+            actionId == InputTypeUtils.IME_ACTION_CUSTOM_LABEL -> editorInfo?.actionId ?: EditorInfo.IME_ACTION_SEND
+            actionId != EditorInfo.IME_ACTION_NONE -> actionId
+            else -> EditorInfo.IME_ACTION_SEND
+        }
     }
 
     private fun getAvenoxTemplateVariables(
@@ -3257,6 +3278,20 @@ class InputLogic(
         val prefs = helium314.keyboard.latin.utils.DeviceProtectedUtils.getSharedPreferences(mLatinIME)
         var prompt = prefs.getString("pref_custom_ai_prompt_$index", "") ?: ""
 
+        val packageName = getCurrentInputEditorInfo()?.packageName
+        val currentMode = AppQuirksManager.getAvenoxMode(packageName)
+        val modeScope = prefs.getString("pref_custom_ai_modes_$index", "")
+        val appScope = prefs.getString("pref_custom_ai_apps_$index", "")
+        if (!AvenoxPromptEngine.isNodeVisibleInMode(modeScope, currentMode) ||
+            !AvenoxPromptEngine.isNodeVisibleInApp(appScope, packageName)
+        ) {
+            KeyboardSwitcher.getInstance().showToast(
+                mLatinIME.getString(R.string.avenox_node_unavailable),
+                true
+            )
+            return
+        }
+
         val localCommand = AvenoxPromptEngine.detectLocalCommand(prompt)
         if (localCommand != null) {
             val rawLocalText = AvenoxPromptEngine.removeBehaviorTokens(prompt)
@@ -3265,10 +3300,19 @@ class InputLogic(
             } else {
                 ""
             }
+            val editorText = readAvenoxEditorText()
+            if (editorText == null) {
+                KeyboardSwitcher.getInstance().showToast(
+                    mLatinIME.getString(R.string.avenox_editor_too_long),
+                    false
+                )
+                return
+            }
             val localText = AvenoxPromptEngine.renderTemplate(
                 rawLocalText,
-                getAvenoxTemplateVariables(readAvenoxEditorText(), selectedText)
+                getAvenoxTemplateVariables(editorText, selectedText)
             )
+            val directSend = prefs.getBoolean("pref_custom_ai_direct_send_$index", false)
             when (localCommand) {
                 AvenoxPromptEngine.COMMAND_INSERT -> {
                     if (localText.isBlank()) {
@@ -3278,6 +3322,35 @@ class InputLogic(
                     mConnection.finishComposingText()
                     resetComposingState(true)
                     mLatinIME.onTextInput(localText)
+                    if (directSend) {
+                        performEditorAction(getAvenoxSendActionId(), settingsValues, handler)
+                    }
+                }
+                AvenoxPromptEngine.COMMAND_PREFIX -> {
+                    if (localText.isBlank()) return
+                    replaceAvenoxEditorText(localText + editorText)
+                    if (directSend) {
+                        performEditorAction(getAvenoxSendActionId(), settingsValues, handler)
+                    }
+                }
+                AvenoxPromptEngine.COMMAND_SUFFIX -> {
+                    if (localText.isBlank()) return
+                    replaceAvenoxEditorText(editorText + localText)
+                    if (directSend) {
+                        performEditorAction(getAvenoxSendActionId(), settingsValues, handler)
+                    }
+                }
+                AvenoxPromptEngine.COMMAND_REPLACE -> {
+                    if (localText.isBlank()) return
+                    mConnection.finishComposingText()
+                    resetComposingState(true)
+                    if (!mConnection.hasSelection()) {
+                        mConnection.selectAll()
+                    }
+                    mConnection.commitText(localText, 1)
+                    if (directSend) {
+                        performEditorAction(getAvenoxSendActionId(), settingsValues, handler)
+                    }
                 }
                 AvenoxPromptEngine.COMMAND_LOCAL_SEND -> {
                     if (localText.isBlank()) {
@@ -3287,14 +3360,15 @@ class InputLogic(
                     mConnection.finishComposingText()
                     resetComposingState(true)
                     mLatinIME.onTextInput(localText)
-                    val editorInfo = getCurrentInputEditorInfo()
-                    val actionId = InputTypeUtils.getImeOptionsActionIdFromEditorInfo(editorInfo)
-                    val effectiveAction = when {
-                        actionId == InputTypeUtils.IME_ACTION_CUSTOM_LABEL -> editorInfo?.actionId ?: EditorInfo.IME_ACTION_SEND
-                        actionId != EditorInfo.IME_ACTION_NONE -> actionId
-                        else -> EditorInfo.IME_ACTION_SEND
-                    }
-                    performEditorAction(effectiveAction, settingsValues, handler)
+                    performEditorAction(getAvenoxSendActionId(), settingsValues, handler)
+                }
+                AvenoxPromptEngine.COMMAND_RAW_SEND -> {
+                    performEditorAction(
+                        getAvenoxSendActionId(),
+                        settingsValues,
+                        handler,
+                        applyAvenoxPrompt = false,
+                    )
                 }
                 AvenoxPromptEngine.COMMAND_MODE_PREFIX,
                 AvenoxPromptEngine.COMMAND_MODE_SUFFIX -> {

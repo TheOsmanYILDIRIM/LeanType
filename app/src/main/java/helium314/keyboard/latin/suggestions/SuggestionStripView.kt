@@ -968,6 +968,8 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
             || key?.startsWith("pref_custom_ai_tag_") == true
             || key?.startsWith("pref_custom_ai_prompt_") == true
             || key?.startsWith("pref_custom_ai_modes_") == true
+            || key?.startsWith("pref_custom_ai_apps_") == true
+            || key?.startsWith("pref_custom_ai_direct_send_") == true
             || key?.startsWith("pref_dict_download_link_") == true) {
             missingDictPromptView = null
             KeyboardIconsSet.instance.loadIcons(context)
@@ -1684,18 +1686,40 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         return allConfiguredAvenoxKeys().isNotEmpty()
     }
 
-    private fun allConfiguredAvenoxKeys(): List<ToolbarKey> =
-        ToolbarKey.entries.filter { key ->
-            if (!key.name.startsWith("CUSTOM_AI_")) return@filter false
-            val index = key.name.removePrefix("CUSTOM_AI_").toIntOrNull() ?: return@filter false
-            !context.prefs().getString("pref_custom_ai_prompt_$index", "").isNullOrBlank()
+    private fun allConfiguredAvenoxKeys(): List<ToolbarKey> {
+        val prefs = context.prefs()
+        val rawOrder = prefs.getString(Settings.PREF_TOOLBAR_KEYS, helium314.keyboard.latin.utils.defaultToolbarPref)
+            ?: helium314.keyboard.latin.utils.defaultToolbarPref
+        val normalizedOrder = if (rawOrder.contains(";") || rawOrder.contains(",")) {
+            rawOrder.replace(";", Constants.Separators.ENTRY).replace(",", Constants.Separators.KV)
+        } else {
+            rawOrder
         }
+        val order = normalizedOrder
+            .split(Constants.Separators.ENTRY)
+            .mapNotNull { entry ->
+                val name = entry.substringBefore(Constants.Separators.KV)
+                runCatching { ToolbarKey.valueOf(name) }.getOrNull()
+            }
+            .withIndex()
+            .associate { it.value to it.index }
 
-    private fun configuredAvenoxKeys(mode: String): List<ToolbarKey> =
+        return ToolbarKey.entries
+            .filter { key ->
+                if (!key.name.startsWith("CUSTOM_AI_")) return@filter false
+                val index = key.name.removePrefix("CUSTOM_AI_").toIntOrNull() ?: return@filter false
+                !prefs.getString("pref_custom_ai_prompt_$index", "").isNullOrBlank()
+            }
+            .sortedBy { order[it] ?: (1000 + it.ordinal) }
+    }
+
+    private fun configuredAvenoxKeys(mode: String, packageName: String?): List<ToolbarKey> =
         allConfiguredAvenoxKeys().filter { key ->
             val index = key.name.removePrefix("CUSTOM_AI_").toIntOrNull() ?: return@filter false
-            val scope = context.prefs().getString("pref_custom_ai_modes_$index", "")
-            AvenoxPromptEngine.isNodeVisibleInMode(scope, mode)
+            val modeScope = context.prefs().getString("pref_custom_ai_modes_$index", "")
+            val appScope = context.prefs().getString("pref_custom_ai_apps_$index", "")
+            AvenoxPromptEngine.isNodeVisibleInMode(modeScope, mode) &&
+                    AvenoxPromptEngine.isNodeVisibleInApp(appScope, packageName)
         }
 
     private fun createAvenoxModeChip(mode: String, dim: Int): TextView =
@@ -1747,7 +1771,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
 
         avenoxQuickRowKeys.addView(createAvenoxModeChip(mode, dim))
 
-        for (key in configuredAvenoxKeys(mode)) {
+        for (key in configuredAvenoxKeys(mode, packageName)) {
             val button = createToolbarKey(context, key)
             button.layoutParams = LinearLayout.LayoutParams(dim, dim).apply {
                 gravity = Gravity.CENTER_VERTICAL
@@ -1756,6 +1780,28 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
             setupKey(button, colors)
 
             val index = key.name.removePrefix("CUSTOM_AI_").toIntOrNull()
+            if (index != null) {
+                button.setOnLongClickListener {
+                    AudioAndHapticFeedbackManager.getInstance().performHapticAndAudioFeedback(
+                        KeyCode.NOT_SPECIFIED,
+                        button,
+                        HapticEvent.KEY_PRESS
+                    )
+                    val intent = android.content.Intent().apply {
+                        setClass(context, helium314.keyboard.settings.SettingsActivity2::class.java)
+                        putExtra(
+                            "screen",
+                            helium314.keyboard.settings.SettingsDestination.CustomAIKeyConfig + index
+                        )
+                        putExtra("from_ime", true)
+                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                android.content.Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or
+                                android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    context.startActivity(intent)
+                    true
+                }
+            }
             val prompt = index?.let { context.prefs().getString("pref_custom_ai_prompt_$it", "") }.orEmpty()
             val command = AvenoxPromptEngine.detectLocalCommand(prompt)
             val commandText = AvenoxPromptEngine.removeBehaviorTokens(prompt)
