@@ -83,6 +83,20 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
+        create("avenoxRelease") {
+            // AVENOX-HOOK:r8-performance-release
+            // R8/resource-shrunk release behavior, but keep the existing Avenox .debug package
+            // and stable development signature so users can install it over prior Avenox builds.
+            initWith(getByName("release"))
+            isMinifyEnabled = true
+            isShrinkResources = true
+            isDebuggable = false
+            isJniDebuggable = false
+            signingConfig = signingConfigs.getByName("avenoxDebug")
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-avenox-r8"
+            matchingFallbacks += listOf("release")
+        }
         create("nouserlib") { // same as release, but does not allow the user to provide a library
             isMinifyEnabled = true
             isShrinkResources = true  // Enable resource shrinking to reduce APK size

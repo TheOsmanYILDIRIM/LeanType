@@ -81,12 +81,11 @@ jobs:
           EOF
           ./gradlew --no-daemon -I /tmp/avenox-test-filter.gradle testStandardRunTestsUnitTest
 
-      - name: Compile online variant and build signed debug APK
+      - name: Build R8-optimized online release APK
         if: steps.upstream.outputs.changed == 'true'
         run: |
           ./gradlew --no-daemon \
-            compileStandardRunTestsKotlin \
-            assembleStandardDebug
+            assembleStandardAvenoxRelease
       - name: Push verified merge
         if: steps.upstream.outputs.changed == 'true'
         run: git push origin HEAD:main
@@ -94,7 +93,7 @@ jobs:
         if: steps.upstream.outputs.changed == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: LeanType-Avenox-standard-upstream-${{ steps.upstream.outputs.sha }}
-          path: app/build/outputs/apk/standard/debug/*.apk
+          name: LeanType-Avenox-standard-r8-upstream-${{ steps.upstream.outputs.sha }}
+          path: app/build/outputs/apk/standard/avenoxRelease/*.apk
           if-no-files-found: error
           retention-days: 14

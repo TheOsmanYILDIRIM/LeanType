@@ -63,6 +63,10 @@
     {
       "path": "docs/FEATURES.md",
       "marker": "AVENOX-HOOK:settings-map"
+    },
+    {
+      "path": "app/build.gradle.kts",
+      "marker": "AVENOX-HOOK:r8-performance-release"
     }
   ]
 }

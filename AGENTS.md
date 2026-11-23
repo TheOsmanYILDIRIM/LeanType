@@ -7,8 +7,8 @@ Bu depo `LeanBitLab/LeanType` upstream'inin hızlı hareket eden fork'udur. Upst
 - Mevcut App Profiles, toolbar, Custom AI Keys, Text Expander ve InputConnection altyapıları yeniden kullanılır; paralel ikinci sistem kurulmaz.
 - Upstream dosyasına zorunlu dokunuşta `AVENOX-HOOK:<id>` marker'ı bulunur ve `docs/AVENOX_OVERLAY.json` içinde kayıtlıdır.
 - `tools/check_avenox_overlay.py` izin verilmeyen fork delta dosyalarını CI'da reddeder.
-- `.github/workflows/avenox-upstream-sync.yml` upstream'i düzenli alır; merge + guard + test + debug APK build geçmeden `main` güncellenmez.
+- `.github/workflows/avenox-upstream-sync.yml` upstream'i düzenli alır; merge + guard + test + R8 optimize online APK build geçmeden `main` güncellenmez.
 - Force-push, test/güvenlik kapısı zayıflatma ve upstream kodunu Avenox klasörüne kopyalama yok.
 - IME davranışı değişikliklerinde CI/APK kanıtı gerçek cihaz testinin yerine geçmez.
 
-- Avenox CI yalnız `standard` (online) debug APK üretir. `.avenox/signing/avenox-debug.keystore` yalnız güncelleme üstüne kurulum için kullanılan **public/sabit geliştirme imzasıdır**; production/release anahtarı değildir ve gizli kabul edilmez.
+- Avenox CI yalnız `standard` (online) `avenoxRelease` APK üretir. Bu build R8 minify + optimize + resource shrink kullanır, debuggable değildir; önceki Avenox kurulumlarının üstüne kurulabilmesi için `.debug` applicationId suffix'ini ve sabit Avenox geliştirme imzasını korur. `.avenox/signing/avenox-debug.keystore` **public/sabit geliştirme imzasıdır**; mağaza/production release anahtarı değildir.

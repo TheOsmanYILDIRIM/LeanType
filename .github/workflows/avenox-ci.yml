@@ -54,16 +54,15 @@ jobs:
           EOF
           ./gradlew --no-daemon -I /tmp/avenox-test-filter.gradle testStandardRunTestsUnitTest
 
-      - name: Compile online variant and build signed debug APK
+      - name: Build R8-optimized online release APK
         run: |
           ./gradlew --no-daemon \
-            compileStandardRunTestsKotlin \
-            assembleStandardDebug
-      - name: Upload online debug APK
+            assembleStandardAvenoxRelease
+      - name: Upload R8 online release APK
         uses: actions/upload-artifact@v4
         with:
-          name: LeanType-Avenox-standard-debug-${{ github.sha }}
-          path: app/build/outputs/apk/standard/debug/*.apk
+          name: LeanType-Avenox-standard-r8-release-${{ github.sha }}
+          path: app/build/outputs/apk/standard/avenoxRelease/*.apk
           if-no-files-found: error
           retention-days: 14
       - name: Upload reports on failure
