@@ -1368,9 +1368,9 @@ graph LR
 - "here", Downloading…, Translation source language, Translation target language, Offline AI Plugin, System Instruction, Translate System Instruction, Temperature, Top-P (Nucleus Sampling), Top-K, Min-P
 
 </details>
-<details><summary><b>Settings → Advanced → App Profiles</b> (12)</summary>
+<details><summary><b>Settings → Advanced → App Profiles</b> (13)</summary>
 
-- Always show suggestions, Hide suggestion strip, Hide toolbar, Selection-based word replacement, Web Editor Compatibility, Automatic Incognito, Force Non-Incognito, Strip No-Enter Flag, Force Direct Text Commit, Allow Symbol Composing, Disable Auto-Spacing, Allow on Non-Editable Fields
+- Always show suggestions, Hide suggestion strip, Hide toolbar, Dedicated Avenox quick row, Selection-based word replacement, Web Editor Compatibility, Automatic Incognito, Force Non-Incognito, Strip No-Enter Flag, Force Direct Text Commit, Allow Symbol Composing, Disable Auto-Spacing, Allow on Non-Editable Fields
 
 </details>
 <details><summary><b>Settings → Advanced → Background Services</b> (3)</summary>
