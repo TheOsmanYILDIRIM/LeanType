@@ -36,12 +36,28 @@ def main() -> int:
 
     if args.upstream_ref:
         changed = [x for x in git("diff", "--name-only", f"{args.upstream_ref}...HEAD").splitlines() if x]
+
+        # A fork can temporarily lag upstream. A file changed earlier in fork history may now be
+        # byte-identical to the current upstream tip; don't treat that historical/reverted delta
+        # as a live overlay change.
+        live_changed = []
+        for path in changed:
+            head_blob = git("rev-parse", f"HEAD:{path}").strip() if subprocess.run(
+                ["git", "cat-file", "-e", f"HEAD:{path}"], cwd=ROOT
+            ).returncode == 0 else None
+            upstream_blob = git("rev-parse", f"{args.upstream_ref}:{path}").strip() if subprocess.run(
+                ["git", "cat-file", "-e", f"{args.upstream_ref}:{path}"], cwd=ROOT
+            ).returncode == 0 else None
+            if head_blob == upstream_blob:
+                continue
+            live_changed.append(path)
+
         prefixes = tuple(data.get("owned_prefixes", []))
         owned_files = set(data.get("owned_files", []))
-        unexpected = [path for path in changed if path not in owned_files and not path.startswith(prefixes) and path not in integration]
+        unexpected = [path for path in live_changed if path not in owned_files and not path.startswith(prefixes) and path not in integration]
         if unexpected:
             fail("unexpected upstream-owned delta: " + ", ".join(unexpected))
-        print(f"Avenox overlay guard: OK ({len(changed)} delta paths)")
+        print(f"Avenox overlay guard: OK ({len(live_changed)} live delta paths)")
     else:
         print("Avenox overlay static guard: OK")
     return 0
