@@ -93,6 +93,7 @@ import helium314.keyboard.settings.SettingsWithoutKey
 import kotlin.math.min
 
 private val TOOLBAR_INTERPOLATOR = PathInterpolator(0.1f, 0.9f, 0.2f, 1.0f)
+private const val PREF_AVENOX_QUICK_ROW_OPEN = "pref_avenox_quick_row_open"
 
 @SuppressLint("InflateParams")
 class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int) :
@@ -166,6 +167,25 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
         )
+    }
+    private val avenoxQuickRowToggleKey = ImageButton(context, null, R.attr.suggestionWordStyle).apply {
+        minimumWidth = 0
+        minimumHeight = 0
+        scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
+        setBackgroundResource(R.drawable.toolbar_key_background)
+        contentDescription = context.getString(R.string.avenox_quick_row_toggle_content_description)
+        visibility = GONE
+        setOnClickListener {
+            AudioAndHapticFeedbackManager.getInstance().performHapticAndAudioFeedback(
+                KeyCode.NOT_SPECIFIED,
+                this,
+                HapticEvent.KEY_PRESS
+            )
+            val prefs = context.prefs()
+            val next = !prefs.getBoolean(PREF_AVENOX_QUICK_ROW_OPEN, false)
+            prefs.edit().putBoolean(PREF_AVENOX_QUICK_ROW_OPEN, next).apply()
+            updateAvenoxQuickRow()
+        }
     }
     private val toolbarExpandKey = findViewById<ImageButton>(R.id.suggestions_strip_toolbar_key)
     private var toolbarRow: LinearLayout? = null
@@ -310,6 +330,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
             
             // Add views to toolbar row
             row.addView(toolbarExpandKey)
+            row.addView(avenoxQuickRowToggleKey)
             row.addView(toolbarContainer)
             row.addView(pinnedKeys)
             
@@ -328,6 +349,9 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
 
         if (Settings.getValues().mSplitToolbar) {
              // Ensure Expand Key is visible (actually handled in updateKeys now)
+        } else {
+            val toggleIndex = (suggestionsStripWrapper.indexOfChild(toolbarExpandKey) + 1).coerceAtLeast(0)
+            suggestionsStripWrapper.addView(avenoxQuickRowToggleKey, toggleIndex)
         }
 
         addView(avenoxQuickRowContainer)
@@ -417,11 +441,13 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
             // suggestionsStrip visibility is handled dynamically in updateSplitToolbarState
             val isEmojiView = isShowingEmojiSuggestions || helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().isShowingEmojiPalettes
             val hideToolbarRow = Settings.getValues().mToolbarMode == ToolbarMode.SUGGESTION_STRIP
-            toolbarRow?.isVisible = !isEmojiView && !hideToolbarRow
+            val showAvenoxToggle = shouldShowAvenoxToggle()
+            toolbarRow?.isVisible = !isEmojiView && (!hideToolbarRow || showAvenoxToggle)
             toolbarContainer.isVisible = !locked && !isEmojiView && !hideToolbarRow
             toolbar.visibility = if (isEmojiView || hideToolbarRow) GONE else VISIBLE
             pinnedKeys.isVisible = false // Hide pinned keys
             toolbarExpandKey.isVisible = false // Hide expand key
+            avenoxQuickRowToggleKey.isVisible = showAvenoxToggle
             updateSplitToolbarState()
         } else {
             val mode = Settings.getValues().mToolbarMode
@@ -970,6 +996,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
             || key?.startsWith("pref_custom_ai_modes_") == true
             || key?.startsWith("pref_custom_ai_apps_") == true
             || key?.startsWith("pref_custom_ai_direct_send_") == true
+            || key == PREF_AVENOX_QUICK_ROW_OPEN
             || key?.startsWith("pref_dict_download_link_") == true) {
             missingDictPromptView = null
             KeyboardIconsSet.instance.loadIcons(context)
@@ -1662,8 +1689,10 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         val settingsValues = Settings.getValues()
         val split = settingsValues.mSplitToolbar
         val isEmojiView = split && (isShowingEmojiSuggestions || KeyboardSwitcher.getInstance().isShowingEmojiPalettes)
+        val suggestionOnlyNeedsAvenoxToggle =
+            split && settingsValues.mToolbarMode == ToolbarMode.SUGGESTION_STRIP && shouldShowAvenoxToggle()
         val singleRow = isEmojiView ||
-                settingsValues.mToolbarMode == ToolbarMode.SUGGESTION_STRIP ||
+                (settingsValues.mToolbarMode == ToolbarMode.SUGGESTION_STRIP && !suggestionOnlyNeedsAvenoxToggle) ||
                 settingsValues.mToolbarMode == ToolbarMode.TOOLBAR_KEYS
         return if (split && !singleRow) 2 else 1
     }
@@ -1674,17 +1703,16 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
     private fun currentAvenoxMode(): String =
         AppQuirksManager.getAvenoxMode(currentAvenoxPackage())
 
-    private fun shouldShowAvenoxQuickRow(): Boolean {
+    private fun shouldShowAvenoxToggle(): Boolean {
         val ime = KeyboardSwitcher.getInstance().latinIME ?: return false
         val editorInfo = ime.currentInputEditorInfo ?: return false
         if (InputTypeUtils.isAnyPasswordInputType(editorInfo.inputType)) return false
         if (isShowingEmojiSuggestions || KeyboardSwitcher.getInstance().isShowingEmojiPalettes) return false
-
-        // The Avenox shortcut row is global: if Custom AI shortcuts are configured,
-        // it stays visible above the normal suggestion/expand-toolbar strip in every app.
-        // App Profiles still control prompt injection and active-mode highlighting.
         return allConfiguredAvenoxKeys().isNotEmpty()
     }
+
+    private fun shouldShowAvenoxQuickRow(): Boolean =
+        shouldShowAvenoxToggle() && context.prefs().getBoolean(PREF_AVENOX_QUICK_ROW_OPEN, false)
 
     private fun allConfiguredAvenoxKeys(): List<ToolbarKey> {
         val prefs = context.prefs()
@@ -1827,9 +1855,32 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
     }
 
     private fun updateAvenoxQuickRow() {
-        rebuildAvenoxQuickRowKeys()
-        val show = shouldShowAvenoxQuickRow()
+        val showToggle = shouldShowAvenoxToggle()
+        val show = showToggle && shouldShowAvenoxQuickRow()
+        if (show) rebuildAvenoxQuickRowKeys()
         avenoxQuickRowContainer.isVisible = show
+
+        val dim = getEffectiveKeyDimension()
+        val density = resources.displayMetrics.density
+        val padding = Math.round(dim * 0.15f).coerceIn((3 * density).toInt(), (dim / 4))
+        avenoxQuickRowToggleKey.layoutParams = LinearLayout.LayoutParams(dim, dim).apply {
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        avenoxQuickRowToggleKey.setPadding(padding, padding, padding, padding)
+        avenoxQuickRowToggleKey.setImageDrawable(
+            KeyboardIconsSet.instance.getNewDrawable(ToolbarKey.CUSTOM_AI_1.name, context)
+                ?: KeyboardIconsSet.instance.getNewDrawable(ToolbarKey.PROOFREAD.name, context)
+        )
+        val colors = Settings.getValues().mColors
+        colors.setColor(avenoxQuickRowToggleKey, ColorType.TOOL_BAR_KEY)
+        avenoxQuickRowToggleKey.isActivated = show
+        avenoxQuickRowToggleKey.background?.setTint(
+            colors.get(
+                if (show) ColorType.TOOL_BAR_KEY_ENABLED_BACKGROUND
+                else ColorType.TOOL_BAR_EXPAND_KEY_BACKGROUND
+            )
+        )
+        avenoxQuickRowToggleKey.isVisible = showToggle
 
         val stripHeight = ResourceUtils.getSuggestionsStripHeight(resources)
         val baseHeight = stripHeight * getBaseStripRowCount()
@@ -1862,8 +1913,10 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         val isPassword = InputTypeUtils.isAnyPasswordInputType(
             KeyboardSwitcher.getInstance().latinIME?.currentInputEditorInfo?.inputType ?: 0
         )
-        val pinnedCount = pinnedList.count { it != ToolbarKey.GIF || !isPassword }
-        val totalKeys = pinnedCount + 1 // +1 for expand key
+        val pinnedCount = pinnedList.count {
+            (it != ToolbarKey.GIF || !isPassword) && !it.name.startsWith("CUSTOM_AI_")
+        }
+        val totalKeys = pinnedCount + 1 + if (shouldShowAvenoxToggle()) 1 else 0 // expand + optional Avenox toggle
         if (totalKeys <= 1) return baseDim
 
         val floatingWidth = ResourceUtils.getFloatingKeyboardWidth()
@@ -1918,11 +1971,11 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         // Toolbar keys setup
         // Always populate toolbar keys if mode allows, visibility handled in updateKeys
         if (mToolbarMode == ToolbarMode.TOOLBAR_KEYS || mToolbarMode == ToolbarMode.EXPANDABLE) {
-            val keysToRender = if (isSplitToolbar || mToolbarMode == ToolbarMode.TOOLBAR_KEYS || !Settings.getValues().mAutoHidePinnedKeys) {
+            val keysToRender = (if (isSplitToolbar || mToolbarMode == ToolbarMode.TOOLBAR_KEYS || !Settings.getValues().mAutoHidePinnedKeys) {
                 getEnabledToolbarKeys(context.prefs())
             } else {
                 getEnabledToolbarKeys(context.prefs()).filterNot { it in pinnedKeysList }
-            }
+            }).filterNot { it.name.startsWith("CUSTOM_AI_") }
             for (key in keysToRender) {
                 if (key == ToolbarKey.GIF && isPassword) continue
                 val button = createToolbarKey(context, key)
@@ -1938,6 +1991,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         // Only draw pinned keys if not in split mode
         if (!isSplitToolbar && !Settings.getValues().mSuggestionStripHiddenPerUserSettings) {
             for (pinnedKey in pinnedKeysList) {
+                if (pinnedKey.name.startsWith("CUSTOM_AI_")) continue
                 if (pinnedKey == ToolbarKey.GIF && isPassword) continue
                 val button = createToolbarKey(context, pinnedKey)
                 button.layoutParams = LinearLayout.LayoutParams(effectiveDim, effectiveDim).apply {

@@ -53,7 +53,7 @@ Yerel işlemler:
 - `#rawsend`: aktif promptu uygulamadan gönder
 - `#modeprefix`, `#modesuffix`, `#modeoff`: mevcut uygulamanın prompt enjeksiyonunu hızlı değiştir
 
-Dedicated Avenox satırı normal suggestion/toolbar satırının üstündedir. Düğüm sırası mevcut Toolbar ayarındaki sırayı izler. Düğüme uzun basmak doğrudan o Custom AI Key düzenleme ekranını açar.
+Dedicated Avenox satırı normal suggestion/toolbar satırının üstündedir ancak artık sürekli açık değildir. Normal şeritteki tek AI düğmesi satırı açıp kapatır; durum yerel olarak hatırlanır ve ilk kullanımda kapalıdır. Custom AI düğümleri normal toolbar/pinned satırında tekrarlanmaz, yalnız açılan Avenox satırında gösterilir. Düğüm sırası mevcut Toolbar ayarındaki sırayı izler. Düğüme uzun basmak doğrudan o Custom AI Key düzenleme ekranını açar. Prompt modu bildirimleri kısa toast süresi kullanır.
 
 ## Privacy and safety
 

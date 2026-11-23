@@ -3397,14 +3397,13 @@ class InputLogic(
                     AppQuirksManager.updateAvenoxPrompt(getCurrentInputEditorInfo()?.packageName, rawLocalText, position)
                     KeyboardSwitcher.getInstance().showToast(
                         mLatinIME.getString(
-                            R.string.avenox_mode_enabled,
                             if (position == AvenoxPromptEngine.POSITION_PREFIX) {
-                                mLatinIME.getString(R.string.avenox_prompt_position_prefix)
+                                R.string.avenox_prompt_badge_prefix
                             } else {
-                                mLatinIME.getString(R.string.avenox_prompt_position_suffix)
+                                R.string.avenox_prompt_badge_suffix
                             }
                         ),
-                        false
+                        true
                     )
                 }
                 AvenoxPromptEngine.COMMAND_MODE_OFF -> {
@@ -3413,7 +3412,7 @@ class InputLogic(
                         null,
                         AvenoxPromptEngine.POSITION_OFF
                     )
-                    KeyboardSwitcher.getInstance().showToast(mLatinIME.getString(R.string.avenox_mode_disabled), false)
+                    KeyboardSwitcher.getInstance().showToast(mLatinIME.getString(R.string.avenox_mode_disabled), true)
                 }
             }
             return

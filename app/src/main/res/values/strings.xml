@@ -2482,7 +2482,8 @@ New dictionary:
     <string name="avenox_prompt_badge_prefix">Prompt: before</string>
     <string name="avenox_prompt_badge_suffix">Prompt: after</string>
     <string name="avenox_mode_enabled">Prompt mode: %1$s</string>
-    <string name="avenox_mode_disabled">Prompt mode disabled</string>
+    <string name="avenox_mode_disabled">Prompt off</string>
+    <string name="avenox_quick_row_toggle_content_description">Show or hide Avenox AI shortcuts</string>
     <string name="custom_ai_keyword_insert_label">Insert</string>
     <string name="custom_ai_keyword_insert_desc">Insert this key\'s text locally without calling an AI service.</string>
     <string name="custom_ai_keyword_localsend_label">Insert + send</string>
