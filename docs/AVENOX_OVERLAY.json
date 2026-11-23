@@ -59,6 +59,10 @@
     {
       "path": ".github/workflows/update-badges.yml",
       "marker": "AVENOX-HOOK:disable-upstream-badge-writer"
+    },
+    {
+      "path": "docs/FEATURES.md",
+      "marker": "AVENOX-HOOK:settings-map"
     }
   ]
 }
