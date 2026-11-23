@@ -1679,7 +1679,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
     }
 
     private fun configuredAvenoxKeys(): List<ToolbarKey> =
-        getEnabledToolbarKeys(context.prefs()).filter { key ->
+        ToolbarKey.entries.filter { key ->
             if (!key.name.startsWith("CUSTOM_AI_")) return@filter false
             val index = key.name.removePrefix("CUSTOM_AI_").toIntOrNull() ?: return@filter false
             !context.prefs().getString("pref_custom_ai_prompt_$index", "").isNullOrBlank()
