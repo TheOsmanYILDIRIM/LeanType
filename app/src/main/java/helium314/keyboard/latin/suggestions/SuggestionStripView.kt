@@ -32,6 +32,7 @@ import android.view.ViewGroup
 import android.view.animation.PathInterpolator
 import android.view.accessibility.AccessibilityEvent
 import android.widget.HorizontalScrollView
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
@@ -158,7 +159,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         visibility = GONE
         addView(
             avenoxQuickRowKeys,
-            HorizontalScrollView.LayoutParams(
+            FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
