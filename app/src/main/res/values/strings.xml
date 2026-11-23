@@ -2517,9 +2517,9 @@ New dictionary:
 
     <!-- AVENOX-HOOK:node-actions-strings -->
     <string name="custom_ai_keyword_prefix_label">Prefix</string>
-    <string name="custom_ai_keyword_prefix_desc">Add this node&apos;s text before the whole current editor text.</string>
+    <string name="custom_ai_keyword_prefix_desc">Add this node\'s text before the whole current editor text.</string>
     <string name="custom_ai_keyword_suffix_label">Suffix</string>
-    <string name="custom_ai_keyword_suffix_desc">Add this node&apos;s text after the whole current editor text.</string>
+    <string name="custom_ai_keyword_suffix_desc">Add this node\'s text after the whole current editor text.</string>
     <string name="custom_ai_keyword_replace_label">Replace</string>
     <string name="custom_ai_keyword_replace_desc">Replace the selection, or the whole editor when nothing is selected.</string>
     <string name="custom_ai_keyword_rawsend_label">Send without prompt</string>
