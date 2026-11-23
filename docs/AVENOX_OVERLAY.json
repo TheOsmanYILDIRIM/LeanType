@@ -55,6 +55,10 @@
     {
       "path": "app/build.gradle.kts",
       "marker": "AVENOX-HOOK:stable-dev-signing"
+    },
+    {
+      "path": ".github/workflows/update-badges.yml",
+      "marker": "AVENOX-HOOK:disable-upstream-badge-writer"
     }
   ]
 }

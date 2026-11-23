@@ -14,6 +14,8 @@ permissions:
 
 jobs:
   update-badges:
+    # AVENOX-HOOK:disable-upstream-badge-writer
+    if: github.repository == 'LeanBitLab/LeanType'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
