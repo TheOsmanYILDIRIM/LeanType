@@ -227,6 +227,22 @@ object AppQuirksManager {
 
     fun getAllUserQuirks(): Map<String, AppQuirk> = HashMap(userQuirks)
 
+    fun getAvenoxMode(packageName: String?): String {
+        if (packageName.isNullOrBlank()) return AvenoxPromptEngine.MODE_NORMAL
+        val explicit = getUserQuirk(packageName)?.avenoxMode
+        return if (!explicit.isNullOrBlank()) {
+            AvenoxPromptEngine.normalizeMode(explicit)
+        } else {
+            AvenoxPromptEngine.defaultModeForPackage(packageName)
+        }
+    }
+
+    fun updateAvenoxMode(packageName: String?, mode: String) {
+        if (packageName.isNullOrBlank()) return
+        val base = getUserQuirk(packageName) ?: defaultQuirk(packageName) ?: AppQuirk(packageName)
+        saveQuirk(base.copy(avenoxMode = AvenoxPromptEngine.normalizeMode(mode)))
+    }
+
     fun updateAvenoxPrompt(packageName: String?, prompt: String?, position: String) {
         if (packageName.isNullOrBlank()) return
         val normalizedPosition = AvenoxPromptEngine.normalizePosition(position)

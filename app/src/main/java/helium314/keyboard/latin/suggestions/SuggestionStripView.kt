@@ -967,6 +967,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
             || key == Settings.PREF_APP_QUIRKS
             || key?.startsWith("pref_custom_ai_tag_") == true
             || key?.startsWith("pref_custom_ai_prompt_") == true
+            || key?.startsWith("pref_custom_ai_modes_") == true
             || key?.startsWith("pref_dict_download_link_") == true) {
             missingDictPromptView = null
             KeyboardIconsSet.instance.loadIcons(context)
@@ -1668,6 +1669,9 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
     private fun currentAvenoxPackage(): String? =
         KeyboardSwitcher.getInstance().latinIME?.currentInputEditorInfo?.packageName
 
+    private fun currentAvenoxMode(): String =
+        AppQuirksManager.getAvenoxMode(currentAvenoxPackage())
+
     private fun shouldShowAvenoxQuickRow(): Boolean {
         val ime = KeyboardSwitcher.getInstance().latinIME ?: return false
         val editorInfo = ime.currentInputEditorInfo ?: return false
@@ -1677,14 +1681,58 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         // The Avenox shortcut row is global: if Custom AI shortcuts are configured,
         // it stays visible above the normal suggestion/expand-toolbar strip in every app.
         // App Profiles still control prompt injection and active-mode highlighting.
-        return configuredAvenoxKeys().isNotEmpty()
+        return allConfiguredAvenoxKeys().isNotEmpty()
     }
 
-    private fun configuredAvenoxKeys(): List<ToolbarKey> =
+    private fun allConfiguredAvenoxKeys(): List<ToolbarKey> =
         ToolbarKey.entries.filter { key ->
             if (!key.name.startsWith("CUSTOM_AI_")) return@filter false
             val index = key.name.removePrefix("CUSTOM_AI_").toIntOrNull() ?: return@filter false
             !context.prefs().getString("pref_custom_ai_prompt_$index", "").isNullOrBlank()
+        }
+
+    private fun configuredAvenoxKeys(mode: String): List<ToolbarKey> =
+        allConfiguredAvenoxKeys().filter { key ->
+            val index = key.name.removePrefix("CUSTOM_AI_").toIntOrNull() ?: return@filter false
+            val scope = context.prefs().getString("pref_custom_ai_modes_$index", "")
+            AvenoxPromptEngine.isNodeVisibleInMode(scope, mode)
+        }
+
+    private fun createAvenoxModeChip(mode: String, dim: Int): TextView =
+        TextView(context).apply {
+            text = AvenoxPromptEngine.modeLabel(mode)
+            gravity = Gravity.CENTER
+            isAllCaps = false
+            typeface = Typeface.DEFAULT_BOLD
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            setTextColor(Settings.getValues().mColors.get(ColorType.TOOL_BAR_KEY))
+            setBackgroundResource(R.drawable.toolbar_key_background)
+            background?.setTint(Settings.getValues().mColors.get(ColorType.TOOL_BAR_KEY_ENABLED_BACKGROUND))
+            val horizontalPadding = (8 * resources.displayMetrics.density).toInt()
+            setPadding(horizontalPadding, 0, horizontalPadding, 0)
+            layoutParams = LinearLayout.LayoutParams(
+                (dim * 1.45f).toInt().coerceAtLeast(dim),
+                dim
+            ).apply {
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            contentDescription = context.getString(R.string.avenox_mode_chip_content_description, text)
+            setOnClickListener {
+                AudioAndHapticFeedbackManager.getInstance().performHapticAndAudioFeedback(
+                    KeyCode.NOT_SPECIFIED,
+                    this,
+                    HapticEvent.KEY_PRESS
+                )
+                val packageName = currentAvenoxPackage() ?: return@setOnClickListener
+                AppQuirksManager.updateAvenoxMode(packageName, AvenoxPromptEngine.nextMode(currentAvenoxMode()))
+                updateAvenoxQuickRow()
+            }
+            setOnLongClickListener {
+                val packageName = currentAvenoxPackage() ?: return@setOnLongClickListener false
+                AppQuirksManager.updateAvenoxMode(packageName, AvenoxPromptEngine.MODE_NORMAL)
+                updateAvenoxQuickRow()
+                true
+            }
         }
 
     private fun rebuildAvenoxQuickRowKeys() {
@@ -1695,8 +1743,11 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         val dim = getEffectiveKeyDimension()
         val density = resources.displayMetrics.density
         val padding = Math.round(dim * 0.12f).coerceIn((2 * density).toInt(), (dim / 4))
+        val mode = currentAvenoxMode()
 
-        for (key in configuredAvenoxKeys()) {
+        avenoxQuickRowKeys.addView(createAvenoxModeChip(mode, dim))
+
+        for (key in configuredAvenoxKeys(mode)) {
             val button = createToolbarKey(context, key)
             button.layoutParams = LinearLayout.LayoutParams(dim, dim).apply {
                 gravity = Gravity.CENTER_VERTICAL

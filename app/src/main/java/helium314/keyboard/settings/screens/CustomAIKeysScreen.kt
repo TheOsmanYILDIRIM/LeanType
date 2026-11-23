@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.ScrollState
 import androidx.core.content.edit
+import helium314.keyboard.avenox.AvenoxPromptEngine // AVENOX-HOOK:node-mode-scope
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.common.Constants.Separators
 import helium314.keyboard.latin.settings.Settings
@@ -230,6 +231,9 @@ fun ConfigCustomAIKeyScreen(
     val prefKey = "pref_custom_ai_prompt_$index"
     val initialPrompt = prefs.getString(prefKey, "") ?: ""
     val initialTag = prefs.getString("pref_custom_ai_tag_$index", "") ?: ""
+    val initialModeScope = AvenoxPromptEngine.parseModeScope(
+        prefs.getString("pref_custom_ai_modes_$index", "")
+    )
     val keyEnum = CUSTOM_AI_KEY_ENUMS[index - 1]
     
     val modes = listOf(
@@ -266,7 +270,17 @@ fun ConfigCustomAIKeyScreen(
     var customText by remember { mutableStateOf(initialCustomText) }
     var tagText by remember { mutableStateOf(initialTag) }
     var selectedKeywords by remember { mutableStateOf(initialKeywords) }
+    var selectedNodeModes by remember { mutableStateOf(initialModeScope) }
 
+    val nodeModes = listOf(
+        AvenoxPromptEngine.MODE_NORMAL to stringResource(R.string.avenox_mode_normal),
+        AvenoxPromptEngine.MODE_BEYIN to stringResource(R.string.avenox_mode_beyin),
+        AvenoxPromptEngine.MODE_CODING to stringResource(R.string.avenox_mode_coding),
+        AvenoxPromptEngine.MODE_RESEARCH to stringResource(R.string.avenox_mode_research),
+        AvenoxPromptEngine.MODE_IMAGE to stringResource(R.string.avenox_mode_image),
+        AvenoxPromptEngine.MODE_GITHUB to stringResource(R.string.avenox_mode_github),
+        AvenoxPromptEngine.MODE_CUSTOM to stringResource(R.string.avenox_mode_custom),
+    )
 
     val keywordDescriptions = mapOf(
         "#editor" to stringResource(R.string.custom_ai_keyword_editor_desc),
@@ -311,9 +325,14 @@ fun ConfigCustomAIKeyScreen(
                                 if (customText.isNotBlank() && selectedKeywords.isNotEmpty()) append(" ")
                                 append(selectedKeywords.joinToString(" "))
                             }
-                            prefs.edit { 
+                            prefs.edit {
                                 putString(prefKey, finalPrompt)
                                 putString("pref_custom_ai_tag_$index", tagText.trim())
+                                if (selectedNodeModes.isEmpty()) {
+                                    remove("pref_custom_ai_modes_$index")
+                                } else {
+                                    putString("pref_custom_ai_modes_$index", selectedNodeModes.sorted().joinToString(","))
+                                }
                             }
                             updateToolbarKeyStatus(context, keyEnum, finalPrompt.isNotEmpty())
                             onClickBack()
@@ -346,6 +365,7 @@ fun ConfigCustomAIKeyScreen(
                                 prefs.edit { 
                                     remove(prefKey)
                                     remove("pref_custom_ai_tag_$index")
+                                    remove("pref_custom_ai_modes_$index")
                                 }
                                 updateToolbarKeyStatus(context, keyEnum, false)
                                 onClickBack()
@@ -367,9 +387,14 @@ fun ConfigCustomAIKeyScreen(
                                 if (customText.isNotBlank() && selectedKeywords.isNotEmpty()) append(" ")
                                 append(selectedKeywords.joinToString(" "))
                             }
-                            prefs.edit { 
+                            prefs.edit {
                                 putString(prefKey, finalPrompt)
                                 putString("pref_custom_ai_tag_$index", tagText.trim())
+                                if (selectedNodeModes.isEmpty()) {
+                                    remove("pref_custom_ai_modes_$index")
+                                } else {
+                                    putString("pref_custom_ai_modes_$index", selectedNodeModes.sorted().joinToString(","))
+                                }
                             }
                             updateToolbarKeyStatus(context, keyEnum, finalPrompt.isNotEmpty())
                             onClickBack()
@@ -418,6 +443,48 @@ fun ConfigCustomAIKeyScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp)
+            )
+
+            Text(
+                text = stringResource(R.string.avenox_node_modes_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = stringResource(R.string.avenox_node_modes_summary),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                androidx.compose.material3.FilterChip(
+                    selected = selectedNodeModes.isEmpty(),
+                    onClick = { selectedNodeModes = emptySet() },
+                    label = { Text(stringResource(R.string.avenox_node_modes_all)) }
+                )
+                nodeModes.forEach { (mode, label) ->
+                    val selected = mode in selectedNodeModes
+                    androidx.compose.material3.FilterChip(
+                        selected = selected,
+                        onClick = {
+                            selectedNodeModes = if (selected) {
+                                selectedNodeModes - mode
+                            } else {
+                                if (selectedNodeModes.isEmpty()) setOf(mode) else selectedNodeModes + mode
+                            }
+                        },
+                        label = { Text(label) }
+                    )
+                }
+            }
+
+            Text(
+                text = stringResource(R.string.avenox_template_variables_help),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             // All keywords in a single FlowRow

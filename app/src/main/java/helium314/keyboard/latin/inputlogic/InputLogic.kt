@@ -6,6 +6,7 @@
 
 package helium314.keyboard.latin.inputlogic
 
+import android.content.Context
 import android.graphics.Color
 import android.os.SystemClock
 import android.text.InputType
@@ -72,7 +73,9 @@ import helium314.keyboard.latin.utils.TextPlacement
 import helium314.keyboard.latin.utils.TextRange
 import helium314.keyboard.latin.utils.getTimestamp
 import java.text.BreakIterator
+import java.text.SimpleDateFormat
 import java.util.ArrayList
+import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -2696,7 +2699,8 @@ class InputLogic(
         val injected = AvenoxPromptEngine.apply(
             original,
             quirk.avenoxPrompt,
-            quirk.avenoxPromptPosition
+            quirk.avenoxPromptPosition,
+            getAvenoxTemplateVariables(original, selected)
         )
         if (injected == original) return
 
@@ -2704,6 +2708,46 @@ class InputLogic(
         mConnection.selectAll()
         mConnection.commitText(injected, 1)
         resetComposingState(true)
+    }
+
+    private fun readAvenoxEditorText(): String {
+        val maxChars = 60000
+        val before = runCatching {
+            mConnection.getTextBeforeCursor(maxChars, 0)?.toString().orEmpty()
+        }.getOrDefault("")
+        val selected = if (mConnection.hasSelection()) {
+            runCatching { mConnection.getSelectedText(0)?.toString().orEmpty() }.getOrDefault("")
+        } else {
+            ""
+        }
+        val after = runCatching {
+            mConnection.getTextAfterCursor(maxChars, 0)?.toString().orEmpty()
+        }.getOrDefault("")
+        return before + selected + after
+    }
+
+    private fun getAvenoxTemplateVariables(
+        inputText: String,
+        selectedText: String,
+    ): AvenoxPromptEngine.TemplateVariables {
+        val clipboardText = runCatching {
+            val clipboard = mLatinIME.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+            if (clipboard?.hasPrimaryClip() == true && clipboard.primaryClip?.itemCount ?: 0 > 0) {
+                clipboard.primaryClip?.getItemAt(0)?.text?.toString().orEmpty().take(5000)
+            } else {
+                ""
+            }
+        }.getOrDefault("")
+        val today = runCatching {
+            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        }.getOrDefault("")
+        return AvenoxPromptEngine.TemplateVariables(
+            input = inputText,
+            selectedText = selectedText,
+            clipboard = clipboardText,
+            appPackage = getCurrentInputEditorInfo()?.packageName.orEmpty(),
+            date = today,
+        )
     }
 
     private fun performSpecificTldProcessingOnTextInput(text: String): String {
@@ -3215,7 +3259,16 @@ class InputLogic(
 
         val localCommand = AvenoxPromptEngine.detectLocalCommand(prompt)
         if (localCommand != null) {
-            val localText = AvenoxPromptEngine.removeBehaviorTokens(prompt)
+            val rawLocalText = AvenoxPromptEngine.removeBehaviorTokens(prompt)
+            val selectedText = if (mConnection.hasSelection()) {
+                runCatching { mConnection.getSelectedText(0)?.toString().orEmpty() }.getOrDefault("")
+            } else {
+                ""
+            }
+            val localText = AvenoxPromptEngine.renderTemplate(
+                rawLocalText,
+                getAvenoxTemplateVariables(readAvenoxEditorText(), selectedText)
+            )
             when (localCommand) {
                 AvenoxPromptEngine.COMMAND_INSERT -> {
                     if (localText.isBlank()) {
@@ -3254,7 +3307,7 @@ class InputLogic(
                     } else {
                         AvenoxPromptEngine.POSITION_SUFFIX
                     }
-                    AppQuirksManager.updateAvenoxPrompt(getCurrentInputEditorInfo()?.packageName, localText, position)
+                    AppQuirksManager.updateAvenoxPrompt(getCurrentInputEditorInfo()?.packageName, rawLocalText, position)
                     KeyboardSwitcher.getInstance().showToast(
                         mLatinIME.getString(
                             R.string.avenox_mode_enabled,

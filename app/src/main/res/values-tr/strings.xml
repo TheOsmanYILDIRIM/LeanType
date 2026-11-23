@@ -1760,4 +1760,24 @@ Metin düzeltme ve yeniden yazma için cihaz üzerinde GGUF / llama.cpp çıkar�
     <string name="custom_ai_keyword_modeoff_label">Mod: kapalı</string>
     <string name="custom_ai_keyword_modeoff_desc">Kayıtlı şablonu silmeden mevcut uygulamada otomatik prompt enjeksiyonunu kapatır.</string>
 
+
+    <!-- AVENOX-HOOK:mode-template-strings-tr -->
+    <string name="avenox_prompt_position_wrapper">Sarmal şablon</string>
+    <string name="avenox_template_variables_help">Değişkenler: {input}, {selected_text}, {clipboard}, {app}, {date}. {input} mevcut mesajı çiftlemeden şablonun içine yerleştirir.</string>
+    <string name="avenox_mode_title">Avenox modu</string>
+    <string name="avenox_mode_summary">Mod uygulama bazında hatırlanır. Bilinen AI uygulamaları uygun otomatik modla başlar; klavyedeki mod düğmesine dokunarak değiştir, Normal için uzun bas.</string>
+    <string name="avenox_mode_auto">Otomatik (uygulamaya göre)</string>
+    <string name="avenox_mode_normal">Normal</string>
+    <string name="avenox_mode_beyin">Beyin</string>
+    <string name="avenox_mode_coding">Kodlama</string>
+    <string name="avenox_mode_research">Araştırma</string>
+    <string name="avenox_mode_image">Görsel</string>
+    <string name="avenox_mode_github">GitHub</string>
+    <string name="avenox_mode_custom">Özel</string>
+    <string name="avenox_mode_badge">Avenox: %1$s</string>
+    <string name="avenox_mode_chip_content_description">Avenox modu: %1$s. Sonraki mod için dokun; Normal için uzun bas.</string>
+    <string name="avenox_node_modes_title">Görüneceği modlar</string>
+    <string name="avenox_node_modes_summary">Bu hızlı düğümün hangi Avenox modlarında görüneceğini seç. Tüm modlar mevcut davranışı korur.</string>
+    <string name="avenox_node_modes_all">Tüm modlar</string>
+
 </resources>

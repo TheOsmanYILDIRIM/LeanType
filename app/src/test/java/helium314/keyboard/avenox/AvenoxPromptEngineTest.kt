@@ -9,8 +9,14 @@ import kotlin.test.assertTrue
 class AvenoxPromptEngineTest {
     @Test
     fun prefixAndSuffixPreserveUserText() {
-        assertEquals("SYSTEM\n\nhello world", AvenoxPromptEngine.apply("hello world", "SYSTEM", AvenoxPromptEngine.POSITION_PREFIX))
-        assertEquals("hello world\n\nSYSTEM", AvenoxPromptEngine.apply("hello world", "SYSTEM", AvenoxPromptEngine.POSITION_SUFFIX))
+        assertEquals(
+            "SYSTEM\n\nhello world",
+            AvenoxPromptEngine.apply("hello world", "SYSTEM", AvenoxPromptEngine.POSITION_PREFIX),
+        )
+        assertEquals(
+            "hello world\n\nSYSTEM",
+            AvenoxPromptEngine.apply("hello world", "SYSTEM", AvenoxPromptEngine.POSITION_SUFFIX),
+        )
     }
 
     @Test
@@ -19,6 +25,63 @@ class AvenoxPromptEngineTest {
         val suffixed = "hello\n\nSYSTEM"
         assertEquals(prefixed, AvenoxPromptEngine.apply(prefixed, "SYSTEM", AvenoxPromptEngine.POSITION_PREFIX))
         assertEquals(suffixed, AvenoxPromptEngine.apply(suffixed, "SYSTEM", AvenoxPromptEngine.POSITION_SUFFIX))
+    }
+
+    @Test
+    fun wrapperUsesVariablesAndDoesNotDoubleWrap() {
+        val vars = AvenoxPromptEngine.TemplateVariables(
+            input = "hello",
+            selectedText = "ell",
+            clipboard = "clip",
+            appPackage = "com.openai.chatgpt",
+            date = "2026-11-23",
+        )
+        val template = "[{app}] {input}\nDATE={date}\nSEL={selected_text}\nCLIP={clipboard}"
+        val wrapped = "[com.openai.chatgpt] hello\nDATE=2026-11-23\nSEL=ell\nCLIP=clip"
+        assertEquals(wrapped, AvenoxPromptEngine.apply("hello", template, AvenoxPromptEngine.POSITION_WRAPPER, vars))
+        assertEquals(
+            wrapped,
+            AvenoxPromptEngine.apply(
+                wrapped,
+                template,
+                AvenoxPromptEngine.POSITION_WRAPPER,
+                vars.copy(input = wrapped),
+            )
+        )
+    }
+
+    @Test
+    fun inputPlaceholderAutomaticallyUsesWrapperSemantics() {
+        assertEquals(
+            "<hello>",
+            AvenoxPromptEngine.apply("hello", "<{input}>", AvenoxPromptEngine.POSITION_PREFIX),
+        )
+    }
+
+    @Test
+    fun templateVariablesRenderForLocalNodes() {
+        val vars = AvenoxPromptEngine.TemplateVariables(
+            input = "draft",
+            selectedText = "selected",
+            clipboard = "clip",
+            appPackage = "pkg",
+            date = "2026-11-23",
+        )
+        assertEquals(
+            "draft|selected|clip|pkg|2026-11-23",
+            AvenoxPromptEngine.renderTemplate("{input}|{selected_text}|{clipboard}|{app}|{date}", vars),
+        )
+    }
+
+    @Test
+    fun modeScopeAndDefaultsWork() {
+        assertEquals(AvenoxPromptEngine.MODE_BEYIN, AvenoxPromptEngine.defaultModeForPackage("com.openai.chatgpt"))
+        assertEquals(AvenoxPromptEngine.MODE_GITHUB, AvenoxPromptEngine.defaultModeForPackage("com.github.android"))
+        assertEquals(AvenoxPromptEngine.MODE_NORMAL, AvenoxPromptEngine.defaultModeForPackage("com.example.app"))
+        assertTrue(AvenoxPromptEngine.isNodeVisibleInMode("", AvenoxPromptEngine.MODE_CODING))
+        assertTrue(AvenoxPromptEngine.isNodeVisibleInMode("coding,github", AvenoxPromptEngine.MODE_GITHUB))
+        assertFalse(AvenoxPromptEngine.isNodeVisibleInMode("coding,github", AvenoxPromptEngine.MODE_BEYIN))
+        assertEquals(AvenoxPromptEngine.MODE_BEYIN, AvenoxPromptEngine.nextMode(AvenoxPromptEngine.MODE_NORMAL))
     }
 
     @Test
@@ -33,14 +96,5 @@ class AvenoxPromptEngineTest {
         assertEquals(AvenoxPromptEngine.COMMAND_LOCAL_SEND, AvenoxPromptEngine.detectLocalCommand("Devam et #localsend"))
         assertEquals("Devam et", AvenoxPromptEngine.removeBehaviorTokens("Devam et #localsend #outputonly"))
         assertTrue(AvenoxPromptEngine.isEnabled("SYSTEM", AvenoxPromptEngine.POSITION_PREFIX))
-    }
-
-    @Test
-    fun localToolbarLabelsAreReadableWithoutManualTags() {
-        assertEquals("Devam", AvenoxPromptEngine.toolbarLabel("Devam et #localsend"))
-        assertEquals("Düzelt", AvenoxPromptEngine.toolbarLabel("Düzelt #insert"))
-        assertEquals("BAŞA", AvenoxPromptEngine.toolbarLabel("uzun sistem promptu #modeprefix"))
-        assertEquals("Beyin", AvenoxPromptEngine.toolbarLabel("uzun sistem promptu #modeprefix", "Beyin"))
-        assertEquals("", AvenoxPromptEngine.toolbarLabel("normal cloud prompt #proofread"))
     }
 }

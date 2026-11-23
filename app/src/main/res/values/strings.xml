@@ -2494,4 +2494,24 @@ New dictionary:
     <string name="custom_ai_keyword_modeoff_label">Mode: off</string>
     <string name="custom_ai_keyword_modeoff_desc">Disable automatic prompt injection for the current app without deleting its saved template.</string>
 
+
+    <!-- AVENOX-HOOK:mode-template-strings -->
+    <string name="avenox_prompt_position_wrapper">Wrapper template</string>
+    <string name="avenox_template_variables_help">Variables: {input}, {selected_text}, {clipboard}, {app}, {date}. {input} wraps the current message without duplicating it.</string>
+    <string name="avenox_mode_title">Avenox mode</string>
+    <string name="avenox_mode_summary">The mode is remembered per app. Known AI apps start with a useful automatic mode; tap the mode pill on the keyboard to cycle, long-press it for Normal.</string>
+    <string name="avenox_mode_auto">Automatic (by app)</string>
+    <string name="avenox_mode_normal">Normal</string>
+    <string name="avenox_mode_beyin">Beyin</string>
+    <string name="avenox_mode_coding">Coding</string>
+    <string name="avenox_mode_research">Research</string>
+    <string name="avenox_mode_image">Image</string>
+    <string name="avenox_mode_github">GitHub</string>
+    <string name="avenox_mode_custom">Custom</string>
+    <string name="avenox_mode_badge">Avenox: %1$s</string>
+    <string name="avenox_mode_chip_content_description">Avenox mode: %1$s. Tap for next mode; long-press for Normal.</string>
+    <string name="avenox_node_modes_title">Visible modes</string>
+    <string name="avenox_node_modes_summary">Choose which Avenox modes show this quick node. All modes keeps current behavior.</string>
+    <string name="avenox_node_modes_all">All modes</string>
+
 </resources>

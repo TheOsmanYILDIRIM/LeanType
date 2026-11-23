@@ -79,6 +79,11 @@ private data class PromptPositionOption(
     val value: String,
 )
 
+private data class AvenoxModeOption(
+    val label: String,
+    val value: String,
+)
+
 @Composable
 fun AppQuirksScreen(
     onClickBack: () -> Unit
@@ -173,7 +178,8 @@ fun AppQuirksScreen(
                     if (filterConfiguredOnly) {
                         val effective = AppQuirksManager.getEffectiveQuirk(app.packageName)
                         val isBrowser = BrowserDetector.isWebBrowser(app.packageName)
-                        (effective != null && effective.hasCustomSettings()) || isBrowser
+                        val hasAvenoxAutoMode = AppQuirksManager.getAvenoxMode(app.packageName) != AvenoxPromptEngine.MODE_NORMAL
+                        (effective != null && effective.hasCustomSettings()) || isBrowser || hasAvenoxAutoMode
                     } else {
                         true
                     }
@@ -275,6 +281,14 @@ fun AppQuirksScreen(
                         stringResource(R.string.app_quirks_badge_no_toolbar),
                         MaterialTheme.colorScheme.secondaryContainer,
                         MaterialTheme.colorScheme.onSecondaryContainer
+                    ))
+                }
+                val avenoxMode = AppQuirksManager.getAvenoxMode(app.packageName)
+                if (avenoxMode != AvenoxPromptEngine.MODE_NORMAL) {
+                    badges.add(BadgeInfo(
+                        stringResource(R.string.avenox_mode_badge, AvenoxPromptEngine.modeLabel(avenoxMode)),
+                        MaterialTheme.colorScheme.primaryContainer,
+                        MaterialTheme.colorScheme.onPrimaryContainer
                     ))
                 }
                 if (effective?.avenoxPromptPosition == AvenoxPromptEngine.POSITION_PREFIX && effective.avenoxPrompt?.isNotBlank() == true) {
@@ -432,9 +446,10 @@ private fun AppQuirkDialog(
     val initialEffective = remember(app.packageName) {
         AppQuirksManager.getEffectiveQuirk(app.packageName) ?: AppQuirk(app.packageName)
     }
-    val hasUserQuirk = remember(app.packageName) {
-        AppQuirksManager.getUserQuirk(app.packageName) != null
+    val initialUserQuirk = remember(app.packageName) {
+        AppQuirksManager.getUserQuirk(app.packageName)
     }
+    val hasUserQuirk = initialUserQuirk != null
 
     var forceWebEditor by remember { mutableStateOf(initialEffective.forceWebEditor) }
     var forceIncognito by remember { mutableStateOf(initialEffective.forceIncognito) }
@@ -453,6 +468,7 @@ private fun AppQuirkDialog(
     var avenoxPromptPosition by remember {
         mutableStateOf(AvenoxPromptEngine.normalizePosition(initialEffective.avenoxPromptPosition))
     }
+    var avenoxModeOverride by remember { mutableStateOf(initialUserQuirk?.avenoxMode.orEmpty()) }
     var selectedAction by remember { mutableStateOf(initialEffective.forceEnterAction) }
 
     val options = listOf(
@@ -477,8 +493,21 @@ private fun AppQuirkDialog(
         PromptPositionOption(stringResource(R.string.avenox_prompt_position_off), AvenoxPromptEngine.POSITION_OFF),
         PromptPositionOption(stringResource(R.string.avenox_prompt_position_prefix), AvenoxPromptEngine.POSITION_PREFIX),
         PromptPositionOption(stringResource(R.string.avenox_prompt_position_suffix), AvenoxPromptEngine.POSITION_SUFFIX),
+        PromptPositionOption(stringResource(R.string.avenox_prompt_position_wrapper), AvenoxPromptEngine.POSITION_WRAPPER),
     )
     val currentPromptPosition = promptPositionOptions.find { it.value == avenoxPromptPosition } ?: promptPositionOptions.first()
+
+    val avenoxModeOptions = listOf(
+        AvenoxModeOption(stringResource(R.string.avenox_mode_auto), ""),
+        AvenoxModeOption(stringResource(R.string.avenox_mode_normal), AvenoxPromptEngine.MODE_NORMAL),
+        AvenoxModeOption(stringResource(R.string.avenox_mode_beyin), AvenoxPromptEngine.MODE_BEYIN),
+        AvenoxModeOption(stringResource(R.string.avenox_mode_coding), AvenoxPromptEngine.MODE_CODING),
+        AvenoxModeOption(stringResource(R.string.avenox_mode_research), AvenoxPromptEngine.MODE_RESEARCH),
+        AvenoxModeOption(stringResource(R.string.avenox_mode_image), AvenoxPromptEngine.MODE_IMAGE),
+        AvenoxModeOption(stringResource(R.string.avenox_mode_github), AvenoxPromptEngine.MODE_GITHUB),
+        AvenoxModeOption(stringResource(R.string.avenox_mode_custom), AvenoxPromptEngine.MODE_CUSTOM),
+    )
+    val currentAvenoxModeOption = avenoxModeOptions.find { it.value == avenoxModeOverride } ?: avenoxModeOptions.first()
 
     ThreeButtonAlertDialog(
         onDismissRequest = onDismissRequest,
@@ -501,6 +530,7 @@ private fun AppQuirkDialog(
                 useSelectionForWordReplacement = useSelectionForWordReplacement,
                 avenoxPrompt = avenoxPrompt.trim(),
                 avenoxPromptPosition = AvenoxPromptEngine.normalizePosition(avenoxPromptPosition),
+                avenoxMode = avenoxModeOverride,
             )
             AppQuirksManager.saveQuirk(newQuirk)
             onSaved()
@@ -558,6 +588,24 @@ private fun AppQuirkDialog(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
+                    text = stringResource(R.string.avenox_mode_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = stringResource(R.string.avenox_mode_summary),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                DropDownField(
+                    items = avenoxModeOptions,
+                    selectedItem = currentAvenoxModeOption,
+                    onSelected = { avenoxModeOverride = it.value }
+                ) {
+                    Text(it.label)
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
                     text = stringResource(R.string.avenox_prompt_title),
                     style = MaterialTheme.typography.titleMedium
                 )
@@ -582,6 +630,12 @@ private fun AppQuirkDialog(
                         label = { Text(stringResource(R.string.avenox_prompt_template)) },
                         minLines = 3,
                         modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.avenox_template_variables_help),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 QuirkToggleRow(

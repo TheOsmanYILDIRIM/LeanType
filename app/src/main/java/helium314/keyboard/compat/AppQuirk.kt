@@ -25,13 +25,14 @@ data class AppQuirk(
     // AVENOX-HOOK:app-profile-model
     val avenoxPrompt: String = "",
     val avenoxPromptPosition: String = "off",
+    val avenoxMode: String = "",
 ) {
     fun hasCustomSettings(): Boolean =
         forceWebEditor || stripNoEnterAction || (forceEnterAction != null) || forceIncognito ||
                 forceNonIncognito || forceDirectCommit || allowSymbolComposing || disableAutoSpace ||
                 allowTypeNullKeyboard || (autoCorrectionMode != null) || hideSuggestionStrip || hideToolbar ||
                 alwaysShowSuggestions || useSelectionForWordReplacement || avenoxPrompt.isNotBlank() ||
-                avenoxPromptPosition != "off"
+                avenoxPromptPosition != "off" || avenoxMode.isNotBlank()
 
     fun toJson(): JSONObject {
         val json = JSONObject()
@@ -52,6 +53,7 @@ data class AppQuirk(
         if (useSelectionForWordReplacement) json.put("useSelectionForWordReplacement", true)
         if (avenoxPrompt.isNotBlank()) json.put("avenoxPrompt", avenoxPrompt)
         if (avenoxPromptPosition != "off") json.put("avenoxPromptPosition", avenoxPromptPosition)
+        if (avenoxMode.isNotBlank()) json.put("avenoxMode", avenoxMode)
         return json
     }
 
@@ -74,6 +76,7 @@ data class AppQuirk(
             val useSelectionForWordReplacement = json.optBoolean("useSelectionForWordReplacement", false)
             val avenoxPrompt = json.optString("avenoxPrompt", "")
             val avenoxPromptPosition = json.optString("avenoxPromptPosition", "off")
+            val avenoxMode = json.optString("avenoxMode", "")
             return AppQuirk(
                 packageName = packageName,
                 forceWebEditor = forceWebEditor,
@@ -92,6 +95,7 @@ data class AppQuirk(
                 useSelectionForWordReplacement = useSelectionForWordReplacement,
                 avenoxPrompt = avenoxPrompt,
                 avenoxPromptPosition = avenoxPromptPosition,
+                avenoxMode = avenoxMode,
             )
         }
     }
