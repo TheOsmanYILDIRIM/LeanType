@@ -98,8 +98,8 @@ object AvenoxPromptEngine {
     fun parseModeScope(raw: String?): Set<String> =
         raw.orEmpty()
             .split(',')
-            .map { normalizeMode(it.trim()) }
-            .filter { it.isNotEmpty() }
+            .map { it.trim().lowercase() }
+            .filter { it in MODES }
             .toSet()
 
     fun isNodeVisibleInMode(rawScope: String?, currentMode: String?): Boolean {
