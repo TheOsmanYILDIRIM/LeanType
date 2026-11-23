@@ -154,6 +154,8 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         gravity = Gravity.CENTER_VERTICAL
     }
     private val avenoxQuickRowContainer = HorizontalScrollView(context).apply {
+        // Dedicated Avenox row sits ABOVE the normal suggestion/expand-toolbar strip.
+        id = View.generateViewId()
         isFillViewport = false
         overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
         visibility = GONE
@@ -1139,18 +1141,15 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
             return false
         }
 
-        // In split mode, don't intercept touches on the top row (toolbar row)
-        // to prevent accidentally cancelling long presses on toolbar buttons.
-        if (Settings.getValues().mSplitToolbar) {
-            val stripHeight = ResourceUtils.getSuggestionsStripHeight(resources)
-            if (motionEvent.y < stripHeight) {
-                return false
-            }
-        }
-
-        if (avenoxQuickRowContainer.isVisible) {
-            val stripHeight = ResourceUtils.getSuggestionsStripHeight(resources)
-            if (motionEvent.y >= height - stripHeight) return false
+        // Avenox shortcuts occupy the dedicated top row. In split-toolbar mode the
+        // normal toolbar row is directly below it. Never let the suggestions gesture
+        // interceptor steal touches from either button row.
+        val stripHeight = ResourceUtils.getSuggestionsStripHeight(resources)
+        val nonSuggestionRows =
+            (if (avenoxQuickRowContainer.isVisible) 1 else 0) +
+            (if (Settings.getValues().mSplitToolbar) 1 else 0)
+        if (nonSuggestionRows > 0 && motionEvent.y < stripHeight * nonSuggestionRows) {
+            return false
         }
 
         // Detecting sliding up finger to show MoreSuggestionsView.
@@ -1735,17 +1734,22 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
 
         val stripHeight = ResourceUtils.getSuggestionsStripHeight(resources)
         val baseHeight = stripHeight * getBaseStripRowCount()
-        suggestionsStripWrapper.layoutParams = RelativeLayout.LayoutParams(
-            LayoutParams.MATCH_PARENT,
-            baseHeight
-        ).apply {
-            addRule(ALIGN_PARENT_TOP)
-        }
+
+        // Desired vertical order:
+        // 1) Avenox AI prompt shortcuts (optional, dedicated row)
+        // 2) Existing suggestion strip, whose left arrow still expands the normal toolbar.
         avenoxQuickRowContainer.layoutParams = RelativeLayout.LayoutParams(
             LayoutParams.MATCH_PARENT,
             stripHeight
         ).apply {
-            addRule(BELOW, R.id.suggestions_strip_wrapper)
+            addRule(ALIGN_PARENT_TOP)
+        }
+        suggestionsStripWrapper.layoutParams = RelativeLayout.LayoutParams(
+            LayoutParams.MATCH_PARENT,
+            baseHeight
+        ).apply {
+            if (show) addRule(BELOW, avenoxQuickRowContainer.id)
+            else addRule(ALIGN_PARENT_TOP)
         }
         requestLayout()
     }
