@@ -2732,7 +2732,7 @@ class InputLogic(
     ): AvenoxPromptEngine.TemplateVariables {
         val clipboardText = runCatching {
             val clipboard = mLatinIME.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-            if (clipboard?.hasPrimaryClip() == true && clipboard.primaryClip?.itemCount ?: 0 > 0) {
+            if (clipboard?.hasPrimaryClip() == true && (clipboard.primaryClip?.itemCount ?: 0) > 0) {
                 clipboard.primaryClip?.getItemAt(0)?.text?.toString().orEmpty().take(5000)
             } else {
                 ""
