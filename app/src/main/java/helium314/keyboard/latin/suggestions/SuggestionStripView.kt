@@ -1673,8 +1673,10 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         val editorInfo = ime.currentInputEditorInfo ?: return false
         if (InputTypeUtils.isAnyPasswordInputType(editorInfo.inputType)) return false
         if (isShowingEmojiSuggestions || KeyboardSwitcher.getInstance().isShowingEmojiPalettes) return false
-        val quirk = AppQuirksManager.getEffectiveQuirk(editorInfo.packageName) ?: return false
-        if (!quirk.avenoxQuickRow) return false
+
+        // The Avenox shortcut row is global: if Custom AI shortcuts are configured,
+        // it stays visible above the normal suggestion/expand-toolbar strip in every app.
+        // App Profiles still control prompt injection and active-mode highlighting.
         return configuredAvenoxKeys().isNotEmpty()
     }
 

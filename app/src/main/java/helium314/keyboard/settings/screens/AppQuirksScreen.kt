@@ -453,7 +453,6 @@ private fun AppQuirkDialog(
     var avenoxPromptPosition by remember {
         mutableStateOf(AvenoxPromptEngine.normalizePosition(initialEffective.avenoxPromptPosition))
     }
-    var avenoxQuickRow by remember { mutableStateOf(initialEffective.avenoxQuickRow) }
     var selectedAction by remember { mutableStateOf(initialEffective.forceEnterAction) }
 
     val options = listOf(
@@ -502,7 +501,6 @@ private fun AppQuirkDialog(
                 useSelectionForWordReplacement = useSelectionForWordReplacement,
                 avenoxPrompt = avenoxPrompt.trim(),
                 avenoxPromptPosition = AvenoxPromptEngine.normalizePosition(avenoxPromptPosition),
-                avenoxQuickRow = avenoxQuickRow,
             )
             AppQuirksManager.saveQuirk(newQuirk)
             onSaved()
@@ -586,12 +584,6 @@ private fun AppQuirkDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-                QuirkToggleRow(
-                    title = stringResource(R.string.avenox_quick_row_title),
-                    summary = stringResource(R.string.avenox_quick_row_summary),
-                    checked = avenoxQuickRow,
-                    onCheckedChange = { avenoxQuickRow = it }
-                )
                 QuirkToggleRow(
                     title = stringResource(R.string.app_quirks_use_selection_replacement),
                     summary = stringResource(R.string.app_quirks_use_selection_replacement_summary),
