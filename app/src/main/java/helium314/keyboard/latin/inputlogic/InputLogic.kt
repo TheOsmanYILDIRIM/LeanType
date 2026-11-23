@@ -2703,7 +2703,11 @@ class InputLogic(
             original,
             quirk.avenoxPrompt,
             quirk.avenoxPromptPosition,
-            getAvenoxTemplateVariables(original, selected)
+            getAvenoxTemplateVariables(
+                original,
+                selected,
+                includeClipboard = quirk.avenoxPrompt.contains("{clipboard}"),
+            )
         )
         if (injected == original) return
 
@@ -2750,15 +2754,20 @@ class InputLogic(
     private fun getAvenoxTemplateVariables(
         inputText: String,
         selectedText: String,
+        includeClipboard: Boolean,
     ): AvenoxPromptEngine.TemplateVariables {
-        val clipboardText = runCatching {
-            val clipboard = mLatinIME.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-            if (clipboard?.hasPrimaryClip() == true && (clipboard.primaryClip?.itemCount ?: 0) > 0) {
-                clipboard.primaryClip?.getItemAt(0)?.text?.toString().orEmpty().take(5000)
-            } else {
-                ""
-            }
-        }.getOrDefault("")
+        val clipboardText = if (includeClipboard) {
+            runCatching {
+                val clipboard = mLatinIME.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                if (clipboard?.hasPrimaryClip() == true && (clipboard.primaryClip?.itemCount ?: 0) > 0) {
+                    clipboard.primaryClip?.getItemAt(0)?.text?.toString().orEmpty().take(5000)
+                } else {
+                    ""
+                }
+            }.getOrDefault("")
+        } else {
+            ""
+        }
         val today = runCatching {
             SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         }.getOrDefault("")
@@ -3310,7 +3319,11 @@ class InputLogic(
             }
             val localText = AvenoxPromptEngine.renderTemplate(
                 rawLocalText,
-                getAvenoxTemplateVariables(editorText, selectedText)
+                getAvenoxTemplateVariables(
+                    editorText,
+                    selectedText,
+                    includeClipboard = rawLocalText.contains("{clipboard}"),
+                )
             )
             val directSend = prefs.getBoolean("pref_custom_ai_direct_send_$index", false)
             when (localCommand) {
