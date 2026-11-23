@@ -1726,7 +1726,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         TextView(context).apply {
             text = AvenoxPromptEngine.modeLabel(mode)
             gravity = Gravity.CENTER
-            isAllCaps = false
+            setAllCaps(false)
             typeface = Typeface.DEFAULT_BOLD
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
             setTextColor(Settings.getValues().mColors.get(ColorType.TOOL_BAR_KEY))
