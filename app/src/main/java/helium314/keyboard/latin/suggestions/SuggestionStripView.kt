@@ -159,8 +159,8 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         addView(
             avenoxQuickRowKeys,
             HorizontalScrollView.LayoutParams(
-                LayoutParams.WRAP_CONTENT,
-                LayoutParams.MATCH_PARENT
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
             )
         )
     }
