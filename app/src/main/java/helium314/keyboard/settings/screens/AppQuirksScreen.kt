@@ -297,12 +297,6 @@ fun AppQuirksScreen(
                         MaterialTheme.colorScheme.primaryContainer,
                         MaterialTheme.colorScheme.onPrimaryContainer
                     ))
-                } else if (effective?.avenoxPromptPosition == AvenoxPromptEngine.POSITION_SUFFIX && effective.avenoxPrompt?.isNotBlank() == true) {
-                    badges.add(BadgeInfo(
-                        stringResource(R.string.avenox_prompt_badge_suffix),
-                        MaterialTheme.colorScheme.primaryContainer,
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    ))
                 }
                 if (effective?.useSelectionForWordReplacement == true) {
                     badges.add(BadgeInfo(
@@ -492,8 +486,6 @@ private fun AppQuirkDialog(
     val promptPositionOptions = listOf(
         PromptPositionOption(stringResource(R.string.avenox_prompt_position_off), AvenoxPromptEngine.POSITION_OFF),
         PromptPositionOption(stringResource(R.string.avenox_prompt_position_prefix), AvenoxPromptEngine.POSITION_PREFIX),
-        PromptPositionOption(stringResource(R.string.avenox_prompt_position_suffix), AvenoxPromptEngine.POSITION_SUFFIX),
-        PromptPositionOption(stringResource(R.string.avenox_prompt_position_wrapper), AvenoxPromptEngine.POSITION_WRAPPER),
     )
     val currentPromptPosition = promptPositionOptions.find { it.value == avenoxPromptPosition } ?: promptPositionOptions.first()
 

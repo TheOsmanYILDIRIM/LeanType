@@ -1749,6 +1749,8 @@ Metin düzeltme ve yeniden yazma için cihaz üzerinde GGUF / llama.cpp çıkar�
     <string name="avenox_prompt_badge_suffix">Prompt: sonda</string>
     <string name="avenox_mode_enabled">Prompt modu: %1$s</string>
     <string name="avenox_mode_disabled">Prompt kapalı</string>
+    <string name="avenox_send_short">GÖNDER</string>
+    <string name="avenox_send_content_description">Geçerli mesajı gönder</string>
     <string name="avenox_quick_row_toggle_content_description">Avenox AI kısayollarını göster veya gizle</string>
     <string name="custom_ai_keyword_insert_label">Ekle</string>
     <string name="custom_ai_keyword_insert_desc">Bu tuşun metnini AI servisi çağırmadan doğrudan metin alanına ekler.</string>

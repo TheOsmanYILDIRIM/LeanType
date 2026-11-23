@@ -8,53 +8,34 @@ import kotlin.test.assertTrue
 
 class AvenoxPromptEngineTest {
     @Test
-    fun prefixAndSuffixPreserveUserText() {
+    fun prefixPreservesUserTextAndIsIdempotent() {
+        val prefixed = "SYSTEM\n\nhello world"
         assertEquals(
-            "SYSTEM\n\nhello world",
+            prefixed,
             AvenoxPromptEngine.apply("hello world", "SYSTEM", AvenoxPromptEngine.POSITION_PREFIX),
         )
         assertEquals(
-            "hello world\n\nSYSTEM",
-            AvenoxPromptEngine.apply("hello world", "SYSTEM", AvenoxPromptEngine.POSITION_SUFFIX),
+            prefixed,
+            AvenoxPromptEngine.apply(prefixed, "SYSTEM", AvenoxPromptEngine.POSITION_PREFIX),
         )
     }
 
     @Test
-    fun injectionIsIdempotentAtConfiguredEdge() {
-        val prefixed = "SYSTEM\n\nhello"
-        val suffixed = "hello\n\nSYSTEM"
-        assertEquals(prefixed, AvenoxPromptEngine.apply(prefixed, "SYSTEM", AvenoxPromptEngine.POSITION_PREFIX))
-        assertEquals(suffixed, AvenoxPromptEngine.apply(suffixed, "SYSTEM", AvenoxPromptEngine.POSITION_SUFFIX))
+    fun legacySuffixAndWrapperPositionsAreDisabled() {
+        assertEquals(AvenoxPromptEngine.POSITION_OFF, AvenoxPromptEngine.normalizePosition("suffix"))
+        assertEquals(AvenoxPromptEngine.POSITION_OFF, AvenoxPromptEngine.normalizePosition("wrapper"))
+        assertEquals("hello", AvenoxPromptEngine.apply("hello", "SYSTEM", "suffix"))
+        assertEquals("hello", AvenoxPromptEngine.apply("hello", "SYSTEM", "wrapper"))
     }
 
     @Test
-    fun wrapperUsesVariablesAndDoesNotDoubleWrap() {
-        val vars = AvenoxPromptEngine.TemplateVariables(
-            input = "hello",
-            selectedText = "ell",
-            clipboard = "clip",
-            appPackage = "com.openai.chatgpt",
-            date = "2026-11-23",
-        )
-        val template = "[{app}] {input}\nDATE={date}\nSEL={selected_text}\nCLIP={clipboard}"
-        val wrapped = "[com.openai.chatgpt] hello\nDATE=2026-11-23\nSEL=ell\nCLIP=clip"
-        assertEquals(wrapped, AvenoxPromptEngine.apply("hello", template, AvenoxPromptEngine.POSITION_WRAPPER, vars))
+    fun livePrefixRendersBeforeTypingAndDropsInputSlot() {
         assertEquals(
-            wrapped,
-            AvenoxPromptEngine.apply(
-                wrapped,
-                template,
-                AvenoxPromptEngine.POSITION_WRAPPER,
-                vars.copy(input = wrapped),
+            "SYSTEM demo\n\n",
+            AvenoxPromptEngine.renderLivePrefix(
+                "SYSTEM {app} {input}",
+                AvenoxPromptEngine.TemplateVariables(appPackage = "demo", input = "ignored"),
             )
-        )
-    }
-
-    @Test
-    fun inputPlaceholderAutomaticallyUsesWrapperSemantics() {
-        assertEquals(
-            "<hello>",
-            AvenoxPromptEngine.apply("hello", "<{input}>", AvenoxPromptEngine.POSITION_PREFIX),
         )
     }
 
@@ -93,10 +74,12 @@ class AvenoxPromptEngineTest {
     }
 
     @Test
-    fun extraLocalCommandsAreDetectedAndStripped() {
+    fun localCommandsAreDetectedAndRemoved() {
         assertEquals(AvenoxPromptEngine.COMMAND_PREFIX, AvenoxPromptEngine.detectLocalCommand("Context #prefix"))
         assertEquals(AvenoxPromptEngine.COMMAND_RAW_SEND, AvenoxPromptEngine.detectLocalCommand("#rawsend"))
+        assertEquals(AvenoxPromptEngine.COMMAND_LOCAL_SEND, AvenoxPromptEngine.detectLocalCommand("Devam et #localsend"))
         assertEquals("Context", AvenoxPromptEngine.removeBehaviorTokens("Context #prefix"))
+        assertEquals("Devam et", AvenoxPromptEngine.removeBehaviorTokens("Devam et #localsend #outputonly"))
     }
 
     @Test
@@ -104,12 +87,6 @@ class AvenoxPromptEngineTest {
         assertEquals("hello", AvenoxPromptEngine.apply("hello", "SYSTEM", AvenoxPromptEngine.POSITION_OFF))
         assertEquals("hello", AvenoxPromptEngine.apply("hello", " ", AvenoxPromptEngine.POSITION_PREFIX))
         assertFalse(AvenoxPromptEngine.isEnabled("SYSTEM", "invalid"))
-    }
-
-    @Test
-    fun localCommandsAreDetectedAndRemoved() {
-        assertEquals(AvenoxPromptEngine.COMMAND_LOCAL_SEND, AvenoxPromptEngine.detectLocalCommand("Devam et #localsend"))
-        assertEquals("Devam et", AvenoxPromptEngine.removeBehaviorTokens("Devam et #localsend #outputonly"))
         assertTrue(AvenoxPromptEngine.isEnabled("SYSTEM", AvenoxPromptEngine.POSITION_PREFIX))
     }
 }

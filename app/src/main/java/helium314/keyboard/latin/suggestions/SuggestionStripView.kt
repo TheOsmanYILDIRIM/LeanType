@@ -154,18 +154,51 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
     }
-    private val avenoxQuickRowContainer = HorizontalScrollView(context).apply {
-        // Dedicated Avenox row sits ABOVE the normal suggestion/expand-toolbar strip.
-        id = View.generateViewId()
+    private val avenoxQuickRowScroller = HorizontalScrollView(context).apply {
         isFillViewport = false
         overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
-        visibility = GONE
         addView(
             avenoxQuickRowKeys,
             FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
+        )
+    }
+    private val avenoxSendKey = TextView(context).apply {
+        gravity = Gravity.CENTER
+        typeface = Typeface.DEFAULT_BOLD
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+        text = context.getString(R.string.avenox_send_short)
+        contentDescription = context.getString(R.string.avenox_send_content_description)
+        setBackgroundResource(R.drawable.toolbar_key_background)
+        setOnClickListener {
+            AudioAndHapticFeedbackManager.getInstance().performHapticAndAudioFeedback(
+                KeyCode.NOT_SPECIFIED,
+                this,
+                HapticEvent.KEY_PRESS
+            )
+            listener.onCodeInput(
+                KeyCode.AVENOX_SEND,
+                Constants.SUGGESTION_STRIP_COORDINATE,
+                Constants.SUGGESTION_STRIP_COORDINATE,
+                false
+            )
+        }
+    }
+    private val avenoxQuickRowContainer = LinearLayout(context).apply {
+        // Dedicated Avenox row sits ABOVE the normal suggestion/expand-toolbar strip.
+        id = View.generateViewId()
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        visibility = GONE
+        addView(
+            avenoxQuickRowScroller,
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f)
+        )
+        addView(
+            avenoxSendKey,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT)
         )
     }
     private val avenoxQuickRowToggleKey = ImageButton(context, null, R.attr.suggestionWordStyle).apply {
@@ -1708,7 +1741,11 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         val editorInfo = ime.currentInputEditorInfo ?: return false
         if (InputTypeUtils.isAnyPasswordInputType(editorInfo.inputType)) return false
         if (isShowingEmojiSuggestions || KeyboardSwitcher.getInstance().isShowingEmojiPalettes) return false
-        return allConfiguredAvenoxKeys().isNotEmpty()
+        val quirk = AppQuirksManager.getEffectiveQuirk(editorInfo.packageName)
+        val hasLivePrompt = quirk != null &&
+                AvenoxPromptEngine.normalizePosition(quirk.avenoxPromptPosition) == AvenoxPromptEngine.POSITION_PREFIX &&
+                quirk.avenoxPrompt.isNotBlank()
+        return hasLivePrompt || allConfiguredAvenoxKeys().isNotEmpty()
     }
 
     private fun shouldShowAvenoxQuickRow(): Boolean =
@@ -1837,9 +1874,6 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
                 AvenoxPromptEngine.COMMAND_MODE_PREFIX ->
                     quirk?.avenoxPromptPosition == AvenoxPromptEngine.POSITION_PREFIX &&
                             quirk.avenoxPrompt.trim() == commandText
-                AvenoxPromptEngine.COMMAND_MODE_SUFFIX ->
-                    quirk?.avenoxPromptPosition == AvenoxPromptEngine.POSITION_SUFFIX &&
-                            quirk.avenoxPrompt.trim() == commandText
                 AvenoxPromptEngine.COMMAND_MODE_OFF ->
                     quirk?.avenoxPromptPosition == AvenoxPromptEngine.POSITION_OFF
                 else -> false
@@ -1881,6 +1915,15 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
             )
         )
         avenoxQuickRowToggleKey.isVisible = showToggle
+
+        avenoxSendKey.setTextColor(colors.get(ColorType.TOOL_BAR_KEY))
+        avenoxSendKey.background?.setTint(colors.get(ColorType.TOOL_BAR_KEY_ENABLED_BACKGROUND))
+        avenoxSendKey.layoutParams = LinearLayout.LayoutParams(
+            (dim * 1.45f).toInt().coerceAtLeast(dim),
+            dim
+        ).apply {
+            gravity = Gravity.CENTER_VERTICAL
+        }
 
         val stripHeight = ResourceUtils.getSuggestionsStripHeight(resources)
         val baseHeight = stripHeight * getBaseStripRowCount()

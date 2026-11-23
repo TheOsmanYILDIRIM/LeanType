@@ -276,6 +276,9 @@ class InputLogic(
     ): InputTransaction {
         val rawText = event.textToCommit.toString()
         val text = performSpecificTldProcessingOnTextInput(rawText)
+        if (text.isNotEmpty()) {
+            ensureAvenoxLivePrefixBeforeInput()
+        }
         val inputTransaction = InputTransaction(
             settingsValues, event,
             SystemClock.uptimeMillis(), mSpaceState,
@@ -490,6 +493,13 @@ class InputLogic(
         mLastKeyTime = inputTransaction.timestamp
         mConnection.beginBatchEdit()
         try {
+            if (!processedEvent.isFunctionalKeyEvent &&
+                !processedEvent.isConsumed &&
+                processedEvent.codePoint > 0 &&
+                processedEvent.codePoint != Constants.CODE_ENTER
+            ) {
+                ensureAvenoxLivePrefixBeforeInput()
+            }
             if (!mWordComposer.isComposingWord()) {
                 mIsAutoCorrectionIndicatorOn = false
             }
@@ -508,6 +518,10 @@ class InputLogic(
                     handleNonFunctionalEvent(currentEvent, inputTransaction, handler)
                 }
                 currentEvent = currentEvent.nextEvent
+            }
+
+            if (processedEvent.keyCode == KeyCode.DELETE) {
+                maybeRemoveAvenoxLivePrefixAfterDelete()
             }
 
             if (!mConnection.hasSlowInputConnection() && !mWordComposer.isComposingWord()
@@ -561,6 +575,7 @@ class InputLogic(
             mWordComposer.reset()
             return
         }
+        ensureAvenoxLivePrefixBeforeInput()
         mConnection.beginBatchEdit()
         try {
             if (mWordComposer.isComposingWord()) {
@@ -1016,6 +1031,7 @@ class InputLogic(
             }
             KeyCode.UNDO -> sendDownUpKeyEventWithMetaState(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON)
             KeyCode.REDO -> sendDownUpKeyEventWithMetaState(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON)
+            KeyCode.AVENOX_SEND -> if (!isDeviceLocked(mLatinIME)) performAvenoxDedicatedSend(inputTransaction.settingsValues, handler)
             KeyCode.CUSTOM_AI_1 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(1, inputTransaction.settingsValues, handler)
             KeyCode.CUSTOM_AI_2 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(2, inputTransaction.settingsValues, handler)
             KeyCode.CUSTOM_AI_3 -> if (!isDeviceLocked(mLatinIME)) handleCustomAIKey(3, inputTransaction.settingsValues, handler)
@@ -1118,6 +1134,10 @@ class InputLogic(
         inputTransaction.setDidAffectContents()
         if (event.codePoint == Constants.CODE_ENTER) {
             if (tryJumpToNextPlaceholder()) {
+                return
+            }
+            if (isAvenoxLivePrefixModeActive()) {
+                handleNonSpecialCharacterEvent(event, inputTransaction, handler)
                 return
             }
             val editorInfo = getCurrentInputEditorInfo()
@@ -2646,7 +2666,6 @@ class InputLogic(
         actionId: Int,
         settingsValues: SettingsValues,
         handler: LatinIME.UIHandler,
-        applyAvenoxPrompt: Boolean = true,
     ) {
         if (mWordComposer.isComposingWord()) {
             val typedWord = mWordComposer.getTypedWord()
@@ -2659,62 +2678,102 @@ class InputLogic(
             mConnection.finishComposingText()
             StatsUtils.onWordCommitUserTyped(typedWord, mWordComposer.isBatchMode())
         }
-        if (applyAvenoxPrompt) {
-            maybeApplyAvenoxPrompt(actionId)
-        }
         mConnection.performEditorAction(actionId)
     }
 
-    private fun maybeApplyAvenoxPrompt(actionId: Int) {
-        if (actionId == EditorInfo.IME_ACTION_NONE ||
-            actionId == EditorInfo.IME_ACTION_NEXT ||
-            actionId == EditorInfo.IME_ACTION_PREVIOUS
-        ) return
+    private var mAvenoxLivePrefixPackage: String? = null
+    private var mAvenoxLivePrefixText: String? = null
 
-        val editorInfo = getCurrentInputEditorInfo() ?: return
-        if (InputTypeUtils.isAnyPasswordInputType(editorInfo.inputType)) return
+    private fun isAvenoxLivePrefixModeActive(): Boolean {
+        val editorInfo = getCurrentInputEditorInfo() ?: return false
+        if (InputTypeUtils.isAnyPasswordInputType(editorInfo.inputType)) return false
+        val quirk = AppQuirksManager.getEffectiveQuirk(editorInfo.packageName) ?: return false
+        return AvenoxPromptEngine.normalizePosition(quirk.avenoxPromptPosition) == AvenoxPromptEngine.POSITION_PREFIX &&
+                quirk.avenoxPrompt.isNotBlank()
+    }
 
-        val quirk = AppQuirksManager.getEffectiveQuirk(editorInfo.packageName) ?: return
-        if (!AvenoxPromptEngine.isEnabled(quirk.avenoxPrompt, quirk.avenoxPromptPosition)) return
-
-        val maxChars = 60000
-        val before = runCatching {
-            mConnection.getTextBeforeCursor(maxChars, 0)?.toString().orEmpty()
-        }.getOrDefault("")
-        val selected = if (mConnection.hasSelection()) {
-            runCatching { mConnection.getSelectedText(0)?.toString().orEmpty() }.getOrDefault("")
-        } else {
-            ""
-        }
-        val after = runCatching {
-            mConnection.getTextAfterCursor(maxChars, 0)?.toString().orEmpty()
-        }.getOrDefault("")
-
-        // Never replace the editor if Android may have truncated either side.
-        if (before.length >= maxChars || after.length >= maxChars) {
-            Log.w(TAG, "Skipping Avenox prompt injection because editor text exceeds safe read window")
-            return
-        }
-
-        val original = before + selected + after
-        if (original.isBlank()) return
-
-        val injected = AvenoxPromptEngine.apply(
-            original,
+    private fun currentAvenoxLivePrefix(): Pair<String, String>? {
+        val editorInfo = getCurrentInputEditorInfo() ?: return null
+        if (InputTypeUtils.isAnyPasswordInputType(editorInfo.inputType)) return null
+        val quirk = AppQuirksManager.getEffectiveQuirk(editorInfo.packageName) ?: return null
+        if (AvenoxPromptEngine.normalizePosition(quirk.avenoxPromptPosition) != AvenoxPromptEngine.POSITION_PREFIX ||
+            quirk.avenoxPrompt.isBlank()
+        ) return null
+        val rendered = AvenoxPromptEngine.renderLivePrefix(
             quirk.avenoxPrompt,
-            quirk.avenoxPromptPosition,
             getAvenoxTemplateVariables(
-                original,
-                selected,
+                inputText = "",
+                selectedText = "",
                 includeClipboard = quirk.avenoxPrompt.contains("{clipboard}"),
             )
         )
-        if (injected == original) return
+        if (rendered.isBlank()) return null
+        return editorInfo.packageName to rendered
+    }
 
+    private fun ensureAvenoxLivePrefixBeforeInput() {
+        val (packageName, prefix) = currentAvenoxLivePrefix() ?: run {
+            mAvenoxLivePrefixPackage = null
+            mAvenoxLivePrefixText = null
+            return
+        }
+        val editorText = readAvenoxEditorText() ?: return
+        if (editorText.isNotEmpty()) return
         mConnection.finishComposingText()
-        mConnection.selectAll()
-        mConnection.commitText(injected, 1)
-        resetComposingState(true)
+        mConnection.commitText(prefix, 1)
+        mAvenoxLivePrefixPackage = packageName
+        mAvenoxLivePrefixText = prefix
+    }
+
+    private fun applyAvenoxLivePrefixToExistingEditor() {
+        val (packageName, prefix) = currentAvenoxLivePrefix() ?: return
+        val editorText = readAvenoxEditorText() ?: return
+        if (editorText.isEmpty()) return
+        if (editorText.startsWith(prefix)) {
+            mAvenoxLivePrefixPackage = packageName
+            mAvenoxLivePrefixText = prefix
+            return
+        }
+        replaceAvenoxEditorText(prefix + editorText)
+        mAvenoxLivePrefixPackage = packageName
+        mAvenoxLivePrefixText = prefix
+    }
+
+    private fun trackedOrCurrentAvenoxPrefix(): Pair<String, String>? {
+        val packageName = getCurrentInputEditorInfo()?.packageName ?: return null
+        if (packageName == mAvenoxLivePrefixPackage && !mAvenoxLivePrefixText.isNullOrEmpty()) {
+            return packageName to mAvenoxLivePrefixText!!
+        }
+        return currentAvenoxLivePrefix()
+    }
+
+    private fun maybeRemoveAvenoxLivePrefixAfterDelete() {
+        val (_, prefix) = trackedOrCurrentAvenoxPrefix() ?: return
+        val editorText = readAvenoxEditorText() ?: return
+        if (editorText.trimEnd('\n') != prefix.trimEnd('\n')) return
+        replaceAvenoxEditorText("")
+        mAvenoxLivePrefixPackage = null
+        mAvenoxLivePrefixText = null
+    }
+
+    private fun removeAvenoxLivePrefixPreservingUserText() {
+        val (_, prefix) = trackedOrCurrentAvenoxPrefix() ?: run {
+            mAvenoxLivePrefixPackage = null
+            mAvenoxLivePrefixText = null
+            return
+        }
+        val editorText = readAvenoxEditorText() ?: return
+        if (editorText.startsWith(prefix)) {
+            replaceAvenoxEditorText(editorText.removePrefix(prefix))
+        }
+        mAvenoxLivePrefixPackage = null
+        mAvenoxLivePrefixText = null
+    }
+
+    private fun performAvenoxDedicatedSend(settingsValues: SettingsValues, handler: LatinIME.UIHandler) {
+        val editorInfo = getCurrentInputEditorInfo() ?: return
+        if (InputTypeUtils.isAnyPasswordInputType(editorInfo.inputType)) return
+        performEditorAction(getAvenoxSendActionId(), settingsValues, handler)
     }
 
     private fun readAvenoxEditorText(): String? {
@@ -3346,13 +3405,6 @@ class InputLogic(
                         performEditorAction(getAvenoxSendActionId(), settingsValues, handler)
                     }
                 }
-                AvenoxPromptEngine.COMMAND_SUFFIX -> {
-                    if (localText.isBlank()) return
-                    replaceAvenoxEditorText(editorText + localText)
-                    if (directSend) {
-                        performEditorAction(getAvenoxSendActionId(), settingsValues, handler)
-                    }
-                }
                 AvenoxPromptEngine.COMMAND_REPLACE -> {
                     if (localText.isBlank()) return
                     mConnection.finishComposingText()
@@ -3376,37 +3428,26 @@ class InputLogic(
                     performEditorAction(getAvenoxSendActionId(), settingsValues, handler)
                 }
                 AvenoxPromptEngine.COMMAND_RAW_SEND -> {
-                    performEditorAction(
-                        getAvenoxSendActionId(),
-                        settingsValues,
-                        handler,
-                        applyAvenoxPrompt = false,
-                    )
+                    performEditorAction(getAvenoxSendActionId(), settingsValues, handler)
                 }
-                AvenoxPromptEngine.COMMAND_MODE_PREFIX,
-                AvenoxPromptEngine.COMMAND_MODE_SUFFIX -> {
+                AvenoxPromptEngine.COMMAND_MODE_PREFIX -> {
                     if (localText.isBlank()) {
                         KeyboardSwitcher.getInstance().showToast(mLatinIME.getString(R.string.custom_ai_key_not_set), true)
                         return
                     }
-                    val position = if (localCommand == AvenoxPromptEngine.COMMAND_MODE_PREFIX) {
+                    AppQuirksManager.updateAvenoxPrompt(
+                        getCurrentInputEditorInfo()?.packageName,
+                        rawLocalText,
                         AvenoxPromptEngine.POSITION_PREFIX
-                    } else {
-                        AvenoxPromptEngine.POSITION_SUFFIX
-                    }
-                    AppQuirksManager.updateAvenoxPrompt(getCurrentInputEditorInfo()?.packageName, rawLocalText, position)
+                    )
+                    applyAvenoxLivePrefixToExistingEditor()
                     KeyboardSwitcher.getInstance().showToast(
-                        mLatinIME.getString(
-                            if (position == AvenoxPromptEngine.POSITION_PREFIX) {
-                                R.string.avenox_prompt_badge_prefix
-                            } else {
-                                R.string.avenox_prompt_badge_suffix
-                            }
-                        ),
+                        mLatinIME.getString(R.string.avenox_prompt_badge_prefix),
                         true
                     )
                 }
                 AvenoxPromptEngine.COMMAND_MODE_OFF -> {
+                    removeAvenoxLivePrefixPreservingUserText()
                     AppQuirksManager.updateAvenoxPrompt(
                         getCurrentInputEditorInfo()?.packageName,
                         null,

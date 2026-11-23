@@ -67,6 +67,10 @@
     {
       "path": "app/build.gradle.kts",
       "marker": "AVENOX-HOOK:r8-performance-release"
+    },
+    {
+      "path": "app/src/main/java/helium314/keyboard/keyboard/internal/keyboard_parser/floris/KeyCode.kt",
+      "marker": "AVENOX-HOOK:dedicated-send"
     }
   ]
 }

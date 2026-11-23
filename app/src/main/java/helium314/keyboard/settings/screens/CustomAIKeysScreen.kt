@@ -256,12 +256,10 @@ fun ConfigCustomAIKeyScreen(
     val localActions = listOf(
         "#insert" to stringResource(R.string.custom_ai_keyword_insert_label),
         "#prefix" to stringResource(R.string.custom_ai_keyword_prefix_label),
-        "#suffix" to stringResource(R.string.custom_ai_keyword_suffix_label),
         "#replace" to stringResource(R.string.custom_ai_keyword_replace_label),
         "#localsend" to stringResource(R.string.custom_ai_keyword_localsend_label),
         "#rawsend" to stringResource(R.string.custom_ai_keyword_rawsend_label),
         "#modeprefix" to stringResource(R.string.custom_ai_keyword_modeprefix_label),
-        "#modesuffix" to stringResource(R.string.custom_ai_keyword_modesuffix_label),
         "#modeoff" to stringResource(R.string.custom_ai_keyword_modeoff_label),
     )
     val localActionKeywords = localActions.map { it.first }.toSet()
@@ -301,12 +299,10 @@ fun ConfigCustomAIKeyScreen(
         "#showthought" to stringResource(R.string.custom_ai_keyword_showthought_desc),
         "#insert" to stringResource(R.string.custom_ai_keyword_insert_desc),
         "#prefix" to stringResource(R.string.custom_ai_keyword_prefix_desc),
-        "#suffix" to stringResource(R.string.custom_ai_keyword_suffix_desc),
         "#replace" to stringResource(R.string.custom_ai_keyword_replace_desc),
         "#localsend" to stringResource(R.string.custom_ai_keyword_localsend_desc),
         "#rawsend" to stringResource(R.string.custom_ai_keyword_rawsend_desc),
         "#modeprefix" to stringResource(R.string.custom_ai_keyword_modeprefix_desc),
-        "#modesuffix" to stringResource(R.string.custom_ai_keyword_modesuffix_desc),
         "#modeoff" to stringResource(R.string.custom_ai_keyword_modeoff_desc),
     )
 

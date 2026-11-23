@@ -18,8 +18,8 @@ App Profile içindeki `avenoxPrompt` ve `avenoxPromptPosition` kullanılır.
 Pozisyonlar:
 - `off`
 - `prefix`
-- `suffix`
-- `wrapper`
+
+Otomatik app prompt modunda suffix/wrapper kaldırılmıştır. Eski `suffix` / `wrapper` kayıtları güvenli biçimde `off` kabul edilir.
 
 Şablon değişkenleri:
 - `{input}`
@@ -28,9 +28,9 @@ Pozisyonlar:
 - `{app}`
 - `{date}`
 
-`{input}` içeren şablon otomatik olarak wrapper semantiğine alınır. Aynı wrapper/prefix/suffix ikinci kez uygulanmaz. Parola alanlarında enjeksiyon yapılmaz. Android editöründen güvenle okunamayan çok uzun metinler değiştirilmez.
+Prefix modu açıksa prompt gönderme anında eklenmez. Kullanıcı ilk karakteri/metni girdiğinde gerçek editör alanının en başına görünür biçimde eklenir. Kullanıcının yazdığı bölüm backspace ile tamamen silinip yalnız otomatik prefix kaldığında prefix de otomatik temizlenir. Parola alanlarında Avenox prompt davranışı devre dışıdır.
 
-Host uygulamanın ekrandaki kendi gönder düğmesi IME'yi atlayabilir. Prompt modu açıkken klavye action tuşu Send'e çevrilir; garantili enjeksiyon için klavye Send veya bir Avenox direct-send düğümü kullanılmalıdır.
+Prefix modu açıkken Enter normal satır sonudur; gönderme eylemi değildir. Avenox satırının sağındaki sabit **GÖNDER** düğmesi uygulamanın IME send/action çağrısını çalıştırır. Host uygulamanın kendi gönder düğmesi de kullanılabilir çünkü prompt zaten editör metninin içindedir.
 
 ## Quick nodes
 
@@ -47,11 +47,10 @@ kullanılır. Boş mod/uygulama kapsamı tüm modlar/uygulamalar anlamına gelir
 Yerel işlemler:
 - `#insert`: imlece ekle
 - `#prefix`: editör metninin başına ekle
-- `#suffix`: editör metninin sonuna ekle
 - `#replace`: seçimi, seçim yoksa tüm editörü değiştir
 - `#localsend`: ekle + aktif prompt ile gönder
 - `#rawsend`: aktif promptu uygulamadan gönder
-- `#modeprefix`, `#modesuffix`, `#modeoff`: mevcut uygulamanın prompt enjeksiyonunu hızlı değiştir
+- `#modeprefix`, `#modeoff`: mevcut uygulamanın canlı prefix promptunu hızlı aç/kapat
 
 Dedicated Avenox satırı normal suggestion/toolbar satırının üstündedir ancak artık sürekli açık değildir. Normal şeritteki tek AI düğmesi satırı açıp kapatır; durum yerel olarak hatırlanır ve ilk kullanımda kapalıdır. Custom AI düğümleri normal toolbar/pinned satırında tekrarlanmaz, yalnız açılan Avenox satırında gösterilir. Düğüm sırası mevcut Toolbar ayarındaki sırayı izler. Düğüme uzun basmak doğrudan o Custom AI Key düzenleme ekranını açar. Prompt modu bildirimleri kısa toast süresi kullanır.
 

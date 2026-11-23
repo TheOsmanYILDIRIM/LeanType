@@ -4,8 +4,6 @@ package helium314.keyboard.avenox
 object AvenoxPromptEngine {
     const val POSITION_OFF = "off"
     const val POSITION_PREFIX = "prefix"
-    const val POSITION_SUFFIX = "suffix"
-    const val POSITION_WRAPPER = "wrapper"
 
     const val MODE_NORMAL = "normal"
     const val MODE_BEYIN = "beyin"
@@ -27,12 +25,10 @@ object AvenoxPromptEngine {
 
     const val COMMAND_INSERT = "#insert"
     const val COMMAND_PREFIX = "#prefix"
-    const val COMMAND_SUFFIX = "#suffix"
     const val COMMAND_REPLACE = "#replace"
     const val COMMAND_LOCAL_SEND = "#localsend"
     const val COMMAND_RAW_SEND = "#rawsend"
     const val COMMAND_MODE_PREFIX = "#modeprefix"
-    const val COMMAND_MODE_SUFFIX = "#modesuffix"
     const val COMMAND_MODE_OFF = "#modeoff"
 
     data class TemplateVariables(
@@ -43,16 +39,14 @@ object AvenoxPromptEngine {
         val date: String = "",
     )
 
-    private val positions = setOf(POSITION_OFF, POSITION_PREFIX, POSITION_SUFFIX, POSITION_WRAPPER)
+    private val positions = setOf(POSITION_OFF, POSITION_PREFIX)
     private val localCommands = listOf(
         COMMAND_LOCAL_SEND,
         COMMAND_RAW_SEND,
         COMMAND_INSERT,
         COMMAND_PREFIX,
-        COMMAND_SUFFIX,
         COMMAND_REPLACE,
         COMMAND_MODE_PREFIX,
-        COMMAND_MODE_SUFFIX,
         COMMAND_MODE_OFF,
     )
     private val allBehaviorTokens = setOf(
@@ -137,67 +131,28 @@ object AvenoxPromptEngine {
             .replace("{app}", variables.appPackage)
             .replace("{date}", variables.date)
 
+    fun renderLivePrefix(
+        prompt: String,
+        variables: TemplateVariables = TemplateVariables(),
+    ): String {
+        val rendered = renderTemplate(prompt, variables.copy(input = "", selectedText = "")).trim()
+        return if (rendered.isEmpty()) "" else "$rendered\n\n"
+    }
+
     fun apply(
         userText: String,
         prompt: String,
         position: String,
         variables: TemplateVariables = TemplateVariables(),
     ): String {
-        if (prompt.isBlank()) return userText
-        val normalizedPosition = normalizePosition(position)
-
-        // A template containing {input} is inherently a wrapper. Treating it as a prefix/suffix
-        // would duplicate the user's message, so use wrapper semantics defensively.
-        if (normalizedPosition == POSITION_WRAPPER || prompt.contains("{input}")) {
-            return applyWrapper(userText, prompt, variables)
-        }
-
-        val cleanPrompt = renderTemplate(prompt, variables.copy(input = userText)).trim()
+        if (prompt.isBlank() || normalizePosition(position) != POSITION_PREFIX) return userText
+        val cleanPrompt = renderTemplate(prompt, variables.copy(input = "")).trim()
         if (cleanPrompt.isEmpty()) return userText
-        return when (normalizedPosition) {
-            POSITION_PREFIX -> when {
-                userText == cleanPrompt || userText.startsWith("$cleanPrompt\n\n") -> userText
-                userText.isBlank() -> cleanPrompt
-                else -> "$cleanPrompt\n\n$userText"
-            }
-            POSITION_SUFFIX -> when {
-                userText == cleanPrompt || userText.endsWith("\n\n$cleanPrompt") -> userText
-                userText.isBlank() -> cleanPrompt
-                else -> "$userText\n\n$cleanPrompt"
-            }
-            else -> userText
+        return when {
+            userText == cleanPrompt || userText.startsWith("$cleanPrompt\n\n") -> userText
+            userText.isBlank() -> cleanPrompt
+            else -> "$cleanPrompt\n\n$userText"
         }
-    }
-
-    private fun applyWrapper(userText: String, template: String, variables: TemplateVariables): String {
-        val marker = "__AVENOX_INPUT_SLOT__"
-        if (!template.contains("{input}")) {
-            val rendered = renderTemplate(template, variables.copy(input = userText)).trim()
-            if (rendered.isEmpty()) return userText
-            return when {
-                userText == rendered || userText.startsWith("$rendered\n\n") -> userText
-                userText.isBlank() -> rendered
-                else -> "$rendered\n\n$userText"
-            }
-        }
-
-        val scaffold = renderTemplate(
-            template.replace("{input}", marker),
-            variables.copy(input = ""),
-        )
-        val first = scaffold.indexOf(marker)
-        val last = scaffold.lastIndexOf(marker)
-        if (first >= 0 && first == last) {
-            val prefix = scaffold.substring(0, first)
-            val suffix = scaffold.substring(first + marker.length)
-            if (userText.length >= prefix.length + suffix.length &&
-                userText.startsWith(prefix) &&
-                userText.endsWith(suffix)
-            ) {
-                return userText
-            }
-        }
-        return scaffold.replace(marker, userText)
     }
 
     fun detectLocalCommand(prompt: String): String? {
@@ -211,11 +166,9 @@ object AvenoxPromptEngine {
 
         return when (detectLocalCommand(prompt)) {
             COMMAND_MODE_PREFIX -> "BAŞA"
-            COMMAND_MODE_SUFFIX -> "SONA"
             COMMAND_MODE_OFF -> "KAPAT"
             COMMAND_INSERT -> removeBehaviorTokens(prompt).firstWordOr("EKLE")
             COMMAND_PREFIX -> removeBehaviorTokens(prompt).firstWordOr("BAŞA")
-            COMMAND_SUFFIX -> removeBehaviorTokens(prompt).firstWordOr("SONA")
             COMMAND_REPLACE -> removeBehaviorTokens(prompt).firstWordOr("DEĞİŞ")
             COMMAND_LOCAL_SEND -> removeBehaviorTokens(prompt).firstWordOr("GÖNDER")
             COMMAND_RAW_SEND -> "HAM"
