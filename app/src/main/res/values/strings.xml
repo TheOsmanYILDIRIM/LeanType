@@ -2481,6 +2481,8 @@ New dictionary:
     <string name="avenox_prompt_position_suffix">After message</string>
     <string name="avenox_prompt_badge_prefix">Prompt: before</string>
     <string name="avenox_prompt_badge_suffix">Prompt: after</string>
+    <string name="avenox_quick_row_title">Dedicated Avenox quick row</string>
+    <string name="avenox_quick_row_summary">Show a second keyboard row for configured Custom AI keys only. Mode buttons linked to this app profile are highlighted when active.</string>
     <string name="avenox_mode_enabled">Prompt mode: %1$s</string>
     <string name="avenox_mode_disabled">Prompt mode disabled</string>
     <string name="custom_ai_keyword_insert_label">Insert</string>

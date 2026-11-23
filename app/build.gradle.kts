@@ -50,6 +50,16 @@ android {
     }
 
     signingConfigs {
+        // AVENOX-HOOK:stable-dev-signing
+        create("avenoxDebug") {
+            keyAlias = "avenoxdev"
+            keyPassword = "yAm8BMWUWrAZ564cwqTSzwRmSgpR"
+            storeFile = rootProject.file(".avenox/signing/avenox-debug.keystore")
+            storePassword = "yAm8BMWUWrAZ564cwqTSzwRmSgpR"
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+        }
         if (keystorePropertiesFile.exists()) {
             create("release") {
                 keyAlias = keystoreProperties["keyAlias"] as String
@@ -84,6 +94,7 @@ android {
             // and for better performance in case users want to install a debug APK
             isMinifyEnabled = false
             isJniDebuggable = false
+            signingConfig = signingConfigs.getByName("avenoxDebug")
             applicationIdSuffix = ".debug"
             ndk {
                 abiFilters.add("x86_64")
@@ -97,7 +108,7 @@ android {
             isDebuggable = true
             isMinifyEnabled = false
             isJniDebuggable = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("avenoxDebug")
             applicationIdSuffix = ".debug"
         }
     }

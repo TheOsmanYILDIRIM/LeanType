@@ -10,3 +10,5 @@ Bu depo `LeanBitLab/LeanType` upstream'inin hızlı hareket eden fork'udur. Upst
 - `.github/workflows/avenox-upstream-sync.yml` upstream'i düzenli alır; merge + guard + test + debug APK build geçmeden `main` güncellenmez.
 - Force-push, test/güvenlik kapısı zayıflatma ve upstream kodunu Avenox klasörüne kopyalama yok.
 - IME davranışı değişikliklerinde CI/APK kanıtı gerçek cihaz testinin yerine geçmez.
+
+- Avenox CI yalnız `standard` (online) debug APK üretir. `.avenox/signing/avenox-debug.keystore` yalnız güncelleme üstüne kurulum için kullanılan **public/sabit geliştirme imzasıdır**; production/release anahtarı değildir ve gizli kabul edilmez.

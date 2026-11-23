@@ -9,7 +9,8 @@
     "app/src/test/java/helium314/keyboard/avenox/",
     ".github/workflows/avenox-",
     "docs/AVENOX_",
-    "tools/check_avenox_overlay.py"
+    "tools/check_avenox_overlay.py",
+    ".avenox/"
   ],
   "owned_files": [
     "AGENTS.md"
@@ -46,6 +47,14 @@
     {
       "path": "app/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt",
       "marker": "AVENOX-HOOK:toolbar-labels"
+    },
+    {
+      "path": "app/src/main/java/helium314/keyboard/latin/suggestions/SuggestionStripView.kt",
+      "marker": "AVENOX-HOOK:quick-row"
+    },
+    {
+      "path": "app/build.gradle.kts",
+      "marker": "AVENOX-HOOK:stable-dev-signing"
     }
   ]
 }

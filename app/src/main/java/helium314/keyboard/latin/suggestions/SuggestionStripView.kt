@@ -41,6 +41,8 @@ import androidx.core.view.forEach
 import androidx.core.view.isVisible
 import com.leanbitlab.leantype.voice.VoiceConstants
 import helium314.keyboard.compat.isDeviceLocked
+import helium314.keyboard.compat.AppQuirksManager
+import helium314.keyboard.avenox.AvenoxPromptEngine // AVENOX-HOOK:quick-row
 import helium314.keyboard.event.HapticEvent
 import helium314.keyboard.keyboard.KeyboardActionListener
 import helium314.keyboard.keyboard.KeyboardSwitcher
@@ -145,6 +147,23 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
     private val toolbarContainer: View = findViewById(R.id.toolbar_container)
     private val pinnedKeys: ViewGroup = findViewById(R.id.pinned_keys)
     private val suggestionsStrip: ViewGroup = findViewById(R.id.suggestions_strip)
+    private val suggestionsStripWrapper: LinearLayout = findViewById(R.id.suggestions_strip_wrapper)
+    private val avenoxQuickRowKeys = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+    }
+    private val avenoxQuickRowContainer = HorizontalScrollView(context).apply {
+        isFillViewport = false
+        overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+        visibility = GONE
+        addView(
+            avenoxQuickRowKeys,
+            HorizontalScrollView.LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.MATCH_PARENT
+            )
+        )
+    }
     private val toolbarExpandKey = findViewById<ImageButton>(R.id.suggestions_strip_toolbar_key)
     private var toolbarRow: LinearLayout? = null
     private var missingDictPromptView: TextView? = null
@@ -308,22 +327,18 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
              // Ensure Expand Key is visible (actually handled in updateKeys now)
         }
 
+        addView(avenoxQuickRowContainer)
+        Settings.getValues().mColors.setBackground(avenoxQuickRowContainer, ColorType.STRIP_BACKGROUND)
         layoutHelper = SuggestionStripLayoutHelper(context, attrs, defStyle, wordViews, dividerViews, debugInfoViews)
         updateKeys()
+        updateAvenoxQuickRow()
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val stripHeight = ResourceUtils.getSuggestionsStripHeight(resources)
-        val settingsValues = Settings.getValues()
-        val split = settingsValues.mSplitToolbar
-        val isEmojiView = split && (isShowingEmojiSuggestions || helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().isShowingEmojiPalettes)
-        val singleRow = isEmojiView || settingsValues.mToolbarMode == ToolbarMode.SUGGESTION_STRIP || settingsValues.mToolbarMode == ToolbarMode.TOOLBAR_KEYS
-
-        val newHeightSpec = if (split && !singleRow) {
-            MeasureSpec.makeMeasureSpec(stripHeight * 2, MeasureSpec.EXACTLY)
-        } else {
-            MeasureSpec.makeMeasureSpec(stripHeight, MeasureSpec.EXACTLY)
-        }
+        val baseRows = getBaseStripRowCount()
+        val quickRows = if (shouldShowAvenoxQuickRow()) 1 else 0
+        val newHeightSpec = MeasureSpec.makeMeasureSpec(stripHeight * (baseRows + quickRows), MeasureSpec.EXACTLY)
         super.onMeasure(widthMeasureSpec, newHeightSpec)
     }
 
@@ -524,6 +539,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         val settingsValues = Settings.getValues()
         rebuildToolbarKeys()
         updateKeys()
+        updateAvenoxQuickRow()
         val split = settingsValues.mSplitToolbar
         if (split) {
             updateSplitToolbarState()
@@ -945,7 +961,9 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
             || key == Settings.PREF_CLEAR_CLIPBOARD_ICON
             || key == Settings.PREF_APP_LANGUAGE
             || key == "pref_custom_ai_show_tags_on_toolbar"
+            || key == Settings.PREF_APP_QUIRKS
             || key?.startsWith("pref_custom_ai_tag_") == true
+            || key?.startsWith("pref_custom_ai_prompt_") == true
             || key?.startsWith("pref_dict_download_link_") == true) {
             missingDictPromptView = null
             KeyboardIconsSet.instance.loadIcons(context)
@@ -953,6 +971,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
             // Update visibility with auto-hide logic
             setToolbarVisibility(isToolbarManuallyOpen, false)
             updateKeys()
+            updateAvenoxQuickRow()
         }
     }
 
@@ -962,6 +981,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         rebuildToolbarKeys()
         updateKeys()
         updateSplitToolbarState()
+        updateAvenoxQuickRow()
     }
 
     override fun onVisibilityChanged(view: View, visibility: Int) {
@@ -1127,6 +1147,11 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
             }
         }
 
+        if (avenoxQuickRowContainer.isVisible) {
+            val stripHeight = ResourceUtils.getSuggestionsStripHeight(resources)
+            if (motionEvent.y >= height - stripHeight) return false
+        }
+
         // Detecting sliding up finger to show MoreSuggestionsView.
         return moreSuggestionsView.shouldInterceptTouchEvent(motionEvent)
     }
@@ -1157,6 +1182,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
                 listener.onCodeInput(code, Constants.SUGGESTION_STRIP_COORDINATE, Constants.SUGGESTION_STRIP_COORDINATE, false)
                 if (tag === ToolbarKey.INCOGNITO) updateKeys() // update expand key icon
                 if (tag === ToolbarKey.SELECT_MODE) updateToolbarButtonsActivatedState()
+                if (tag.name.startsWith("CUSTOM_AI_")) post { updateAvenoxQuickRow() }
                 return
             }
         }
@@ -1629,6 +1655,100 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         pinnedKeys.forEach { if (it is ImageButton) setToolbarButtonActivatedState(it) }
     }
 
+    private fun getBaseStripRowCount(): Int {
+        val settingsValues = Settings.getValues()
+        val split = settingsValues.mSplitToolbar
+        val isEmojiView = split && (isShowingEmojiSuggestions || KeyboardSwitcher.getInstance().isShowingEmojiPalettes)
+        val singleRow = isEmojiView ||
+                settingsValues.mToolbarMode == ToolbarMode.SUGGESTION_STRIP ||
+                settingsValues.mToolbarMode == ToolbarMode.TOOLBAR_KEYS
+        return if (split && !singleRow) 2 else 1
+    }
+
+    private fun currentAvenoxPackage(): String? =
+        KeyboardSwitcher.getInstance().latinIME?.currentInputEditorInfo?.packageName
+
+    private fun shouldShowAvenoxQuickRow(): Boolean {
+        val ime = KeyboardSwitcher.getInstance().latinIME ?: return false
+        val editorInfo = ime.currentInputEditorInfo ?: return false
+        if (InputTypeUtils.isAnyPasswordInputType(editorInfo.inputType)) return false
+        if (isShowingEmojiSuggestions || KeyboardSwitcher.getInstance().isShowingEmojiPalettes) return false
+        val quirk = AppQuirksManager.getEffectiveQuirk(editorInfo.packageName) ?: return false
+        if (!quirk.avenoxQuickRow) return false
+        return configuredAvenoxKeys().isNotEmpty()
+    }
+
+    private fun configuredAvenoxKeys(): List<ToolbarKey> =
+        getEnabledToolbarKeys(context.prefs()).filter { key ->
+            if (!key.name.startsWith("CUSTOM_AI_")) return@filter false
+            val index = key.name.removePrefix("CUSTOM_AI_").toIntOrNull() ?: return@filter false
+            !context.prefs().getString("pref_custom_ai_prompt_$index", "").isNullOrBlank()
+        }
+
+    private fun rebuildAvenoxQuickRowKeys() {
+        avenoxQuickRowKeys.removeAllViews()
+        val packageName = currentAvenoxPackage()
+        val quirk = packageName?.let { AppQuirksManager.getEffectiveQuirk(it) }
+        val colors = Settings.getValues().mColors
+        val dim = getEffectiveKeyDimension()
+        val density = resources.displayMetrics.density
+        val padding = Math.round(dim * 0.12f).coerceIn((2 * density).toInt(), (dim / 4))
+
+        for (key in configuredAvenoxKeys()) {
+            val button = createToolbarKey(context, key)
+            button.layoutParams = LinearLayout.LayoutParams(dim, dim).apply {
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            button.setPadding(padding, padding, padding, padding)
+            setupKey(button, colors)
+
+            val index = key.name.removePrefix("CUSTOM_AI_").toIntOrNull()
+            val prompt = index?.let { context.prefs().getString("pref_custom_ai_prompt_$it", "") }.orEmpty()
+            val command = AvenoxPromptEngine.detectLocalCommand(prompt)
+            val commandText = AvenoxPromptEngine.removeBehaviorTokens(prompt)
+            val active = when (command) {
+                AvenoxPromptEngine.COMMAND_MODE_PREFIX ->
+                    quirk?.avenoxPromptPosition == AvenoxPromptEngine.POSITION_PREFIX &&
+                            quirk.avenoxPrompt.trim() == commandText
+                AvenoxPromptEngine.COMMAND_MODE_SUFFIX ->
+                    quirk?.avenoxPromptPosition == AvenoxPromptEngine.POSITION_SUFFIX &&
+                            quirk.avenoxPrompt.trim() == commandText
+                AvenoxPromptEngine.COMMAND_MODE_OFF ->
+                    quirk?.avenoxPromptPosition == AvenoxPromptEngine.POSITION_OFF
+                else -> false
+            }
+            button.isActivated = active
+            if (active) {
+                button.background?.setTint(colors.get(ColorType.TOOL_BAR_KEY_ENABLED_BACKGROUND))
+            } else {
+                button.background?.setTint(colors.get(ColorType.TOOL_BAR_EXPAND_KEY_BACKGROUND))
+            }
+            avenoxQuickRowKeys.addView(button)
+        }
+    }
+
+    private fun updateAvenoxQuickRow() {
+        rebuildAvenoxQuickRowKeys()
+        val show = shouldShowAvenoxQuickRow()
+        avenoxQuickRowContainer.isVisible = show
+
+        val stripHeight = ResourceUtils.getSuggestionsStripHeight(resources)
+        val baseHeight = stripHeight * getBaseStripRowCount()
+        suggestionsStripWrapper.layoutParams = RelativeLayout.LayoutParams(
+            LayoutParams.MATCH_PARENT,
+            baseHeight
+        ).apply {
+            addRule(ALIGN_PARENT_TOP)
+        }
+        avenoxQuickRowContainer.layoutParams = RelativeLayout.LayoutParams(
+            LayoutParams.MATCH_PARENT,
+            stripHeight
+        ).apply {
+            addRule(BELOW, R.id.suggestions_strip_wrapper)
+        }
+        requestLayout()
+    }
+
     private fun getEffectiveKeyDimension(): Int {
         val baseDim = keyDimension
         val isFloating = FloatingKeyboardManager.isFloatingMode(context)
@@ -1725,6 +1845,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
             }
         }
         updateVoiceKey()
+        rebuildAvenoxQuickRowKeys()
         if (toolbarContainer.width == 0 || !toolbarContainer.isLaidOut) {
             toolbarContainer.post { applyToolbarKeyLayoutParams(toolbarContainer.isVisible) }
         } else {
